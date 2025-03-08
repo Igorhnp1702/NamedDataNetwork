@@ -659,7 +659,7 @@ int show_interest_table (struct personal_node *personal) {
 
     printf("\nInterest Table: \n\n");
     for (int i = 0; i < 10; i++) {
-        if (personal->interest_tab[i].node_id[0] != '\0') { // Assuming empty entries have node_id as empty string
+        if (personal->interest_tab[i].node_id[0] != '\0') {
             printf("Entry %d:\n", i + 1);
             printf("ID: %s\nNetwork: %s\nAddress: %s\nPort: %s\n\n",
                    personal->interest_tab[i].node_id,
