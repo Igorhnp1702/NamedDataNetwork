@@ -152,6 +152,7 @@
     int client_fd;             // file descriptor to communicate with the extern node
     int neighbrs_fd[NODE_IDS]; // array that relates internal neighbrs id's with their fd. The indexes match the nodes's ids
     int *route_tab;            // expedition table. The indexes of the array are the destinations
+    int interest_table[10]     // table of interests
     char *udp_port;            // UDP port of the server of nodes
     char *udp_address;         // UDP address of the server of nodes
     fd_set rdy_scks;           // set of file descriptors with activity to handle
