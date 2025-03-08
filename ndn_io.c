@@ -648,12 +648,29 @@ void select_cmd(struct personal_node *personal, char *input){
     return success_flag;
 }//show_names
 
-int show_interest_table (){
+int show_interest_table (struct personal_node *personal) { 
 
+    int success_flag = 0;
 
+    if(strcmp(personal->persn_info->network, "") == 0){
+        printf("Error: You are not inside a network\n");
+        return ++success_flag;
+    }
+
+    printf("\nInterest Table: \n\n");
+    for (int i = 0; i < 10; i++) {
+        if (personal->interest_tab[i].node_id[0] != '\0') { // Assuming empty entries have node_id as empty string
+            printf("Entry %d:\n", i + 1);
+            printf("ID: %s\nNetwork: %s\nAddress: %s\nPort: %s\n\n",
+                   personal->interest_tab[i].node_id,
+                   personal->interest_tab[i].network,
+                   personal->interest_tab[i].node_addr,
+                   personal->interest_tab[i].tcp_port);
+        }
+    }
 
     return success_flag;
-}
+}//show_interest_table  
 
 
 
