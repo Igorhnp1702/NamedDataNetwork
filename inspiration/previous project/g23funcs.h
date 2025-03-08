@@ -157,9 +157,9 @@ struct personal_node
    int *route_tab;            // expedition table. The indexes of the array are the destinations
    char *udp_port;            // UDP port of the server of nodes
    char *udp_address;         // UDP address of the server of nodes
-   fd_set rdy_scks;           // set of file descriptors with activity to handle
-   fd_set crr_scks;           // set of file descriptors in use
-   queryList_t *qryhistory;   // history of queries sent
+   fd_set rdy_scks;           // set of file descriptors with activity to handle (rdy = ready)
+   fd_set crr_scks;           // set of file descriptors in use (crr = current)
+   queryList_t *qryhistory;   // history of queries sent (qry = querry)
    contentList_t *contents;   // linked list of the contents of the node
    nodeinfo_t *extern_node;   // contact of the extern neighbor node
    nodeinfo_t *backup_node;   // contact of the backup neighbor node
