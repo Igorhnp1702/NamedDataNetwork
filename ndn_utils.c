@@ -1,10 +1,16 @@
 /************************************************************************************************
- * ndn_main.c
+ * ndn_utils.c
  *
  * Authors:
  *
  * -Igor Paruque ist1102901
  * -Mónica Ferreira ist106520
  *
- * Description: source code for the udp usage
+ * Description: source code for the utility functions
  ***********************************************************************************************/
+
+ 
+ 
+
+
+ 
