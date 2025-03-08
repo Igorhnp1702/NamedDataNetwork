@@ -219,6 +219,21 @@ objectList_t *create(objectList_t *new_object, char *name);
  int show_names(contentList_t **contents);
 
 /***************************************************************
+ * show_interest_table()
+ *
+ *  Description:
+ *
+ *  -Shows all the entries in the personal node's interest table;
+ *
+ *  Arguments:
+ *
+ *  -personal = a pointer to the interest table;
+ *
+ *  Return: 0 on success; 1 on failure;
+ **************************************************************/
+ int show_interest_table(contentList_t **contents);
+
+/***************************************************************
  * show_routing()
  *
  *  Description:
@@ -231,6 +246,7 @@ objectList_t *create(objectList_t *new_object, char *name);
  *
  *  Return: 0 on success; 1 on failure;
  **************************************************************/
+
  int show_routing(int *routing_tab);
 
 /**************************************************************
