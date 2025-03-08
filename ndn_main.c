@@ -96,11 +96,12 @@ int main(int argc, char **argv){
 
         printf("The node server's UDP port will default to %s\n", DEFAULT_REGUDP);
         server_port = DEFAULT_REGUDP;
-    } // if 
+
+    } // if 3 arguments
 
     if (argc == 5)
     {
-        cache_size = strtol(argv[1], cache_size_string_check, 10);
+        cache_size = strtol(argv[1], num__string_check, 10);
 
         if(cache_size < 0 || errno == ERANGE){
             printf("Error in cache size: number out of range\n");
@@ -108,7 +109,7 @@ int main(int argc, char **argv){
             printf("Process terminated\n");
             exit(1);
         }
-        else if(*cache_size_string_check != "\0"){
+        else if(*num_string_check != "\0"){
             printf("Error in cache size: non-numeric character detected\n");
             printf("Process terminated\n");
         }
@@ -165,12 +166,12 @@ int main(int argc, char **argv){
 
         }            
         
-    } // if
+    } // if 4 arguments
 
     if (argc == 6)
     {
 
-        cache_size = strtol(argv[1], cache_size_string_check, 10);
+        cache_size = strtol(argv[1], num_string_check, 10);
 
         if(cache_size < 0 || errno == ERANGE){
             printf("Error in cache size: number out of range\n");
@@ -178,19 +179,55 @@ int main(int argc, char **argv){
             printf("Process terminated\n");
             exit(1);
         }
-        else if(*cache_size_string_check != "\0"){
+        else if(*num_string_check != "\0"){
             printf("Error in cache size: non-numeric character detected\n");
             printf("Process terminated\n");
         }
 
+        if(!is_valid_ip(argv[2])){
+            printf("Error in personal IPv4 address: the address is invalid\n");
+            printf("Process terminated\n");
+            exit(1);
+        }
+
         personal_addr = argv[2];
 
+        if(strtol(argv[3], num_string_check, 10) < 0 || errno == ERANGE){
+            printf("Error in personal port: number out of range\n");
+            printf("Pick a number between 0 and 4294967295 (65565 might be the MAXPORT)\n");
+            printf("Process terminated\n");
+            exit(1);
+        }
+        else if(*num_string_check != "\0"){
+            printf("Error in personal port: non-numeric character detected\n");
+            printf("Process terminated\n");
+            exit(1);
+        }
         personal_port = argv[3];
+
+        if(!is_valid_ip(argv[2])){
+            printf("Error in node server's IPv4 address: the address is invalid\n");
+            printf("Process terminated\n");
+            exit(1);
+        }
 
         server_addr = argv[4];
 
+        if(strtol(argv[4], num_string_check, 10) < 0 || errno == ERANGE){
+            printf("Error in node server's port: number out of range\n");
+            printf("Pick a number between 0 and 4294967295 (65565 might be the MAXPORT)\n");
+            printf("Process terminated\n");
+            exit(1);
+        }
+        else if(*num_string_check != "\0"){
+            printf("Error in node server's port: non-numeric character detected\n");
+            printf("Process terminated\n");
+            exit(1);
+        }
+        
         server_port = argv[5];
-    } // if
+
+    } // if 5 arguments
 
     
     printf("The application was launched successfuly\n\n");
