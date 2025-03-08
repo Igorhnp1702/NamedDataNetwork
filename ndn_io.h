@@ -28,35 +28,34 @@
 // set of strings for the mandatory commands
 
 #define join_str "join"                     // user cmd join
-#define join_str_short "j"
-#define direct_join_str_1 "direct"          // user cmd djoin
-#define direct_join_str_short "dj"
+#define join_str_short "j"                  // short for join
+#define direct_str "direct"          // user cmd djoin
+#define direct_join_str_short "dj"          // short for direct join
 #define create_str  "create"                // user cmd create
-#define create_str_short "c"
+#define create_str_short "c"                // short for
 #define leave_str "leave"                   // user cmd leave
-#define leave_str_short "l"
-#define direct_join_str_short "dj"
+#define leave_str_short "l"                 // short for
 #define delete_str  "delete"                // user cmd delete
-#define delete_str_short "dl"
+#define delete_str_short "dl"               // short for
 #define retrieve_str  "retrieve"            // user cmd get
-#define retrieve_str_short "r"
-#define show_str "show"
-#define topology_str "topology"
-#define show_topology_str_short "st"        // user cmd st (show topology)
-#define names_str "names"
-#define show_names_str "sn"
-#define interest_str "interest"
-#define table_str "table"
-#define show_interest_table_str_short "si"
+#define retrieve_str_short "r"              // short for
+#define show_str "show"                     // partial cmd string
+#define topology_str "topology"             // partial cmd string
+#define show_topology_str_short "st"        // short for show topology
+#define names_str "names"                   // partial cmd string
+#define show_names_str_short "sn"                 // short for
+#define interest_str "interest"             // partial cmd string
+#define table_str "table"                   // partial cmd string
+#define show_interest_table_str_short "si"  //short for show interest table
 #define exit_str "exit"                     // user cmd exit
-#define exit_str_short "x"
+#define exit_str_short "x"                  //short for exit
 
 // set of strings for the optional commands
 
-#define help_str "help"
-#define help_str_short "h"
-#define clear_names_str "clear"             // "names" is defined already
-#define clear_names_str_short "cn"
+#define help_str "help"                     // user cmd help
+#define help_str_short "h"                  // short for help
+#define clear_str "clear"             // partial cmd string
+#define clear_names_str_short "cn"          // short for clear names
 
 // set of strings for the messages
 
@@ -112,7 +111,7 @@ void select_cmd(struct personal_node *personal, char *input);
  *
  * Return: 0 on success, 1 on failure;
  **************************************************************/
- int join(struct personal_node *personal, char *net, char *id);
+ int join(struct personal_node *personal, char *net);
 
 /***************************************************************
  * djoin()
@@ -137,7 +136,7 @@ void select_cmd(struct personal_node *personal, char *input);
  *
  * Return: 0 on success; 1 on failure;
  **************************************************************/
- int djoin(struct personal_node *personal, char *net, char *id, char *bootid, char *bootIP, char *bootTCP);
+ int djoin(struct personal_node *personal, char *net, char *connectIP, char *connectTCP);
 
 /***************************************************************
  * create()

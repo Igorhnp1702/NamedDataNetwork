@@ -11,6 +11,7 @@
 
 #include <arpa/inet.h>
 #include "ndn_io.h"
+#include "ndn_netfuncs.h"
 
 
 /*------------------------------------------Argument checking functions------------------------------------------*/
@@ -64,161 +65,194 @@ int check_ports(char *port_str){
 
 void select_cmd(struct personal_node *personal, char *input){ 
     
-    char net_num[MAX_NET_CHARS]; memset(net_num, 0, sizeof(net_num));            // network number passed in the commands
-    char id_num[MAX_ID_CHARS];  memset(id_num, 0, sizeof(id_num));           // node id passed in the commands
-    char tcp[MAX_TCP_UDP_CHARS];      memset(tcp, 0, sizeof(tcp));          // a tcp port passed in the commands
-    char udp[MAX_TCP_UDP_CHARS];      memset(udp, 0, sizeof(udp));          // the udp port of the node server passed in the commands
-    char boot_id[MAX_ID_CHARS];  memset(boot_id, 0, sizeof(boot_id));          // the boot node id passed in the djoin command
+    char net_num[MAX_NET_CHARS];      memset(net_num, 0, sizeof(net_num));     // network number passed in the commands    
+    char tcp[MAX_TCP_UDP_CHARS];      memset(tcp, 0, sizeof(tcp));             // a tcp port passed in the commands
+    char udp[MAX_TCP_UDP_CHARS];      memset(udp, 0, sizeof(udp));             // the udp port of the node server passed in the commands    
 
-    char first_arg[MAX_MSG_CMD_SIZE]; memset(first_arg, 0, sizeof(first_arg));    // should be enough for the first string of the command
-    char address[MAX_ADDRESS_SIZE];   memset(address, 0, sizeof(address));    // an IPv4 address passed in the commands
+    char cmd_str1[MAX_MSG_CMD_SIZE];  memset(cmd_str1, 0, sizeof(cmd_str1));   // should be enough for the first string of the command
+    char cmd_str2[MAX_MSG_CMD_SIZE];  memset(cmd_str2, 0, sizeof(cmd_str2));   // should be enough for the first string of the command
+    char cmd_str3[MAX_MSG_CMD_SIZE];  memset(cmd_str3, 0, sizeof(cmd_str3));   // should be enough for the first string of the command
+    char address[MAX_ADDRESS_SIZE];   memset(address, 0, sizeof(address));     // an IPv4 address passed in the commands
     char content[MAX_CONTENT_NAME];   memset(content, 0, sizeof(content));     // the name of a content passed in the commands
 
     // parse the first string
 
-    sscanf(input, "%s", first_arg);
+    sscanf(input, "%s %s %s", cmd_str1, cmd_str2, cmd_str3);
 
     // try to read and execute the desired command
 
-    if(strcmp(first_arg, join_str) == 0){
+    if(strcmp(cmd_str1, join_str) == 0 || strcmp(cmd_str1, join_str_short) == 0){
 
         if(strcmp(personal->persn_info->network, "") != 0 ){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }       
-        else if(sscanf(input, "%s %s %s", first_arg, net_num, id_num) == 3){
+        else if(sscanf(input, "%*s %s", net_num) == 1){
             
-            printf("Executing %s...\n\n", first_arg);
-            join(personal, net_num, id_num); //join a network and register the personal node in the server
+            printf("Executing %s...\n\n", join_str);
+            join(personal, net_num); //join a network and register the personal node in the server
             return;
         }                        
         else{
-            printf("Failed to read arguments of %s\n", first_arg); 
+            printf("Failed to read arguments of %s\n", join_str); 
             return;
         } 
-    }//else if
+    }// if
 
-    else if(strcmp(first_arg, djoin_str) == 0){
+    else if(strcmp(cmd_str1, direct_join_str_short) == 0){
 
         if(strcmp(personal->persn_info->network, "") != 0 ){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }
-        else if(sscanf(input, "%*s %s %s %s %s %s", net_num, id_num, boot_id, address, tcp) == 5){
+        else if(sscanf(input, "%*s %s %s %s", net_num, address, tcp) == 3){
             
-            printf("Executing %s...\n\n", first_arg);
-            djoin(personal, net_num, id_num, boot_id, address, tcp); // join a network without registration
+            printf("Executing %s %s...\n\n", direct_str, join_str);
+            djoin(personal, net_num, address, tcp); // join a network without registration
             return;
         }       
         else{
-            printf("Failed to read arguments of %s\n", first_arg); 
+            printf("Failed to read arguments of %s %s\n", direct_str, join_str); 
             return;
         } 
     }//else if
 
-    else if(strcmp(first_arg, create_str) == 0){
+    else if((strcmp(cmd_str1, direct_str) == 0 && strcmp(cmd_str2, join_str) == 0)){
 
-        if(sscanf(input, "%s %s", first_arg, content) == 2){
+        if(strcmp(personal->persn_info->network, "") != 0 ){
+            printf("The node already belongs to a network. Command ignored\n");
+            return;
+        }
+        else if(sscanf(input, "%*s %*s %s %s %s", net_num, address, tcp) == 3){
             
-            printf("Executing %s...\n\n", first_arg);
+            printf("Executing %s %s...\n\n", direct_str, join_str);
+            djoin(personal, net_num, address, tcp); // join a network without registration
+            return;
+        }       
+        else{
+            printf("Failed to read arguments of %s %s\n", direct_str, join_str); 
+            return;
+        } 
+    }//else if
+
+    else if(strcmp(cmd_str1, create_str) == 0 || strcmp(cmd_str1, create_str_short) == 0){
+
+        if(sscanf(input, "%*s %s", content) == 1){
+            
+            printf("Executing %s...\n\n", create_str);
             personal->contents = create(personal->contents, content); // create and store a content inside the personal node           
             return; 
         }
         else{
-            printf("Failed to read arguments of %s\n", first_arg); 
+            printf("Failed to read arguments of %s\n", create_str); 
             return;
         } 
     }//else if
 
-    else if(strcmp(first_arg, delete_str) == 0){
+    else if(strcmp(cmd_str1, delete_str) == 0 || strcmp(cmd_str1, delete_str_short) == 0){
 
-        if(sscanf(input, "%s %s", first_arg, content) == 2){
+        if(sscanf(input, "%*s %s", content) == 1){
             
-            printf("Executing %s...\n\n", first_arg);
+            printf("Executing %s...\n\n", delete_str);
             personal->contents = delete(personal->contents, content); // delete a content inside the personal node
             return;            
         }
         else{
-            printf("Failed to read arguments of %s\n", first_arg); 
+            printf("Failed to read arguments of %s\n", delete_str); 
             return;
         } 
     }//else if
 
-    else if(strcmp(first_arg, get_str) == 0){
+    else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){
         
-        if(sscanf(input, "%s %s %s", first_arg, id_num, content) == 3){
+        if(sscanf(input, "%*s %s", content) == 1){
             
-            printf("Executing %s...\n\n", first_arg);
-            get(personal, id_num, content); // search and copy a content from another node        
+            printf("Executing %s...\n\n", retrieve_str);
+            retrieve(personal, content); // search and copy a content from another node        
             return; 
         }
         else{
-            printf("Failed to read arguments of %s\n", first_arg); 
+            printf("Failed to read arguments of %s\n", retrieve_str); 
             return;
         } 
     }//else if
 
-    else if(strcmp(first_arg, show_topology_str) == 0){
+    else if(strcmp(cmd_str1, show_topology_str_short) == 0){
         
-        printf("Executing %s...\n\n", first_arg);
+        printf("Executing %s %s...\n\n", show_str, topology_str);
         show_topology(personal);  // show topology of the personal node
         return;
 
     }// else if
 
-    else if(strcmp(first_arg, show_names_str) == 0){
+    else if(strcmp(cmd_str1, show_str) == 0){
         
-        printf("Executing %s...\n\n", first_arg);
+        if(strcmp(cmd_str2, topology_str) == 0){
+            printf("Executing %s %s...\n\n", show_str, topology_str);
+            show_topology(personal);  // show topology of the personal node
+            return;
+        }
+
+        if(strcmp(cmd_str2, names_str) == 0){
+            printf("Executing %s %s...\n\n", show_str, names_str);
+            show_names(&personal->contents); // show contents of the personal node
+            return;
+        }
+
+        if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
+
+            printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
+            show_names(&personal->contents); // show contents of the personal node
+            return;
+        }
+        
+    }// else if
+
+    else if(strcmp(cmd_str1, show_names_str_short) == 0){
+        
+        printf("Executing %s...\n\n", cmd_str1);
         show_names(&personal->contents); // show contents of the personal node
         return;
 
-    }//else if
+    }//else if sn
 
-    else if(strcmp(first_arg, clear_names_str) == 0){
+    else if(strcmp(cmd_str1, clear_names_str_short) == 0){
 
-        printf("Executing %s...\n\n", first_arg);
+        printf("Executing %s...\n\n", cmd_str1);
         personal->contents = clear_names(personal->contents);  // clear the contents table of the personal node            
         return;
 
-    }// else if
+    }// else if cn
 
-    else if(strcmp(first_arg, show_routing_str) == 0){
+    else if(strcmp(cmd_str1, show_interest_table_str_short) == 0){
 
         if(strcmp(personal->persn_info->network, "") == 0)
         
-        printf("Executing %s...\n\n", first_arg);
+        printf("Executing %s...\n\n", show_str, interest_str, table_str);
         show_routing(personal->route_tab); // show routing table of the personal node
         return;
 
-    }//else if 
-
-    else if(strcmp(first_arg, clear_routing_str) == 0){
-
-        printf("Executing %s...\n\n", first_arg);
-        clear_routing(personal->route_tab); // clear the routing table of the personal node
-        return;
-        
-    }// else if
-
-    else if(strcmp(first_arg, leave_str) == 0){
+    }//else if si
+    
+    else if(strcmp(cmd_str1, leave_str) == 0 || strcmp(cmd_str1, leave_str_short) == 0){
 
         //remove the personal node from the network
         // reset the struct in order to give the possibility to join or djoin again
 
-        printf("Executing %s...\n\n", first_arg);
+        printf("Executing %s...\n\n", leave_str);
         if(strcmp(personal->persn_info->network, "") == 0){
             printf("The node is already without a network.\n");
         }
         leave(personal);
 
-    }//else if
+    }//else if leave
 
-    else if(strcmp(first_arg, exit_str) == 0){
+    else if(strcmp(cmd_str1, exit_str) == 0 || strcmp(cmd_str1, exit_str_short) == 0){
 
         // remove the personal node from the network  
         // free the memory, close the fds and get out of the program     
         
-        printf("Executing %s...\n\n", first_arg);
+        printf("Executing %s...\n\n", exit_str);
         leave(personal);
         free(personal->route_tab);
         free(personal->neighbrs);
@@ -243,24 +277,26 @@ void select_cmd(struct personal_node *personal, char *input){
         free(personal);
         exit(0);
 
-    }//else if
+    }//else if exit
 
-    else if(strcmp(first_arg, help_str) == 0) {
+    else if(strcmp(cmd_str1, help_str) == 0 || strcmp(cmd_str1, help_str_short) == 0) {
         
-        printf("Executing %s...\n\n", first_arg);
+        printf("Executing %s...\n\n", help_str);
         help_menu();
         return;
     }
     
     else{
-        printf("%s does not match any known command. Therefore, the command will be ignored\n", first_arg);
+        printf("Error: Invalid command\n");
+        printf("Type h or help to get a list of valid commands\n\n");
         return;
     }
     
 }//select_cmd()
 
+ //-------------------------------------------- user commands --------------------------------------------//
 
- int join(struct personal_node *personal, char *net, char *id) { 
+ int join(struct personal_node *personal, char *net) { 
 
     int success_flag = 0;
    
@@ -286,7 +322,7 @@ void select_cmd(struct personal_node *personal, char *input){
 }//join
 
 
- int djoin(struct personal_node *personal, char *net, char *id, char *bootid, char *bootIP, char *bootTCP){
+ int djoin(struct personal_node *personal, char *net, char *connectIP, char *connectTCP){
 
     char msg[MAX_MSG_LENGTH];   memset(msg, 0, sizeof(msg));
     int success_flag = 0;
@@ -461,7 +497,7 @@ void select_cmd(struct personal_node *personal, char *input){
 }//delete
 
 
- int get(struct personal_node *personal, char *dest_id, char *name){
+ int retrieve(struct personal_node *personal, char *dest_id, char *name){
 
     int success_flag = 0;
     if(strcmp(personal->persn_info->network, "") == 0){
@@ -514,7 +550,7 @@ void select_cmd(struct personal_node *personal, char *input){
         printf("Sending: %s\n", query_buffer);
         send_tcp(personal, personal->extern_node, query_buffer);
 
-        for(int iter = 0; iter < NODE_IDS; iter++){
+        for(int iter = 0; iter < MAX_INTERNALS; iter++){
 
             if(personal->neighbrs[iter] != NULL){
                 printf("Sending: %s\n", query_buffer);
@@ -523,7 +559,7 @@ void select_cmd(struct personal_node *personal, char *input){
         }
     }
     return 0;
-}//get
+}//retrieve
 
 
  int show_topology(struct personal_node *personal){
@@ -583,7 +619,7 @@ void select_cmd(struct personal_node *personal, char *input){
 
         if(personal->extern_node == NULL && personal->backup_node == NULL){
             
-            for(iter = 0; iter < NODE_IDS; iter++){
+            for(iter = 0; iter < MAX_INTERNALS; iter++){
 
                 if(personal->neighbrs[iter] != NULL){
 
@@ -598,7 +634,7 @@ void select_cmd(struct personal_node *personal, char *input){
             }//for
         }
         else{
-            for(iter = 0; iter < NODE_IDS; iter++){
+            for(iter = 0; iter < MAX_INTERNALS; iter++){
 
                 if(iter != atoi(personal->extern_node->node_id) &&
                 iter != atoi(personal->backup_node->node_id) &&
@@ -672,63 +708,6 @@ int show_interest_table (struct personal_node *personal) {
     return success_flag;
 }//show_interest_table  
 
-
-
- int show_routing(int *routing_tab){
-
-    int iter;
-    int printed_pairs = 0;
-    int success_flag = 0;
-
-    printf("\nPrinting routing table as:\n\n");
-    
-    printf("Neighbour ------------> Destination \n");    
-
-    for(iter = 0; iter < NODE_IDS; iter++){
-
-        if(routing_tab[iter] != -1){
-
-            printf("%02d ----------------> %02d\n", routing_tab[iter], iter);
-            printed_pairs++;
-        }
-    }
-    if(printed_pairs == 0){
-        printf("\nThe routing table is empty\n");
-        return ++success_flag;
-    }
-    else{
-        printf("\nNumber of entries showed: %d\n", printed_pairs);
-        return success_flag;
-    }
-}//show_routing
-
-
- int clear_routing(int *routing_tab){
-
-    int iter;
-    int cleared_pairs = 0;
-    int success_flag = 0;
-
-    printf("\nClearing routing table...\n");
-
-    for(iter = 0; iter < NODE_IDS; iter++){
-
-        if(routing_tab[iter] != -1){ // if this entry was initialized, reset it
-            
-            routing_tab[iter] = -1;
-            cleared_pairs++;
-        }
-    }
-    if(cleared_pairs == 0){
-        printf("\nThe routing table is empty\n");
-        return ++success_flag;
-    }
-    else{
-        printf("\nNumber of cleared entries: %d\n", cleared_pairs);
-        return success_flag;
-    }
-}//clear_routing
-
  contentList_t *clear_names(contentList_t *contents){
 
     int cleared_names = 0;  //number of names cleared
@@ -786,19 +765,19 @@ int show_interest_table (struct personal_node *personal) {
 
 void help_menu() {
         printf("*****************HELP MENU*****************\n\n");
-        printf("To use the application, insert one of the following commands:\n\n");
-        printf("djoin [desired network] [desired ID] [boot ID] [boot IPv4 address] [boot TCP port]\n");
-        printf("join [desired network] [desired ID]\n");
-        printf("create [name]\n");
-        printf("delete [name]\n");
-        printf("get [ID of node where the desired name is] [the desired name]\n");
-        printf("st (show topology)\n");
-        printf("sn (show names)\n");
-        printf("sr (show routing table)\n");
-        printf("cr (clear routing)\n");
-        printf("cn (clear names)\n");
-        printf("leave (to leave the network)\n");
-        printf("exit (to exit the application)\n");
+        printf("To use the application, insert one of the following commands:\n");
+        printf("Note: curved brackets => valid abreviations; square brackets => arguments\n\n");
+        printf("join (j) [desired network] \n");
+        printf("direct join (dj) [desired network] [connect IPv4 address] [connect TCP port]\n");        
+        printf("create (c) [name]\n");
+        printf("delete (dl) [name]\n");
+        printf("retrieve (r) [name]\n");
+        printf("show topology (st)\n");
+        printf("show names (sn)\n");
+        printf("show interest table (si)\n");        
+        printf("clear names (cn)\n");
+        printf("leave (l)\n");
+        printf("exit (x)\n");
         return;
 }//help_menu
 

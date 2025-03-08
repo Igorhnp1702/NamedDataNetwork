@@ -16,8 +16,7 @@
 #include <errno.h>
 
 // project libraries
-#include "ndn_tcp.h"
-#include "ndn_udp.h"
+#include "ndn_netfuncs.h"
 #include "ndn_io.h"
 #include "ndn_utils.h"
 
@@ -224,7 +223,6 @@ int main(int argc, char **argv){
             printf("Process terminated\n");
             exit(1);
         }
-        
         server_port = argv[5];
 
     } // if 5 arguments

@@ -1,0 +1,142 @@
+/************************************************************************************************
+ * ndn_netfuncs.c
+ *
+ * Authors:
+ *
+ * -Igor Paruque ist1102901
+ * -Mónica Ferreira ist106520
+ *
+ * Description: source code for the network functionalities
+ ***********************************************************************************************/
+
+// general purpose libraries
+#include <stdlib.h>
+#include <string.h>
+
+// project libraries
+#include "ndn_io.h"
+#include "ndn_netfuncs.h"
+#include "ndn_utils.h"
+
+ nodeinfo_t *contact_init(nodeinfo_t *contact){
+
+    contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t)); // the block itself
+
+    /* initializing positive integer variables to -1 */
+          
+    contact->network = (char*)calloc(MAX_NET_CHARS, sizeof(char));      // integer from 000 to 999
+    contact->tcp_port = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char));     // tcp port; integer from 0 to 65 536
+    contact->node_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char));   // IPv4 address
+    //!ponderar inicializar tudo com NULL em vez de 0
+    return contact;
+}//contact_init()
+
+
+ struct personal_node *personal_init(struct personal_node *personal){
+
+    int iter = 0;
+
+    personal = (struct personal_node*)calloc(1, sizeof(struct personal_node));
+
+    personal->persn_info = contact_init(personal->persn_info);
+
+    personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
+    personal->n_internals = 0;    // counter for the number of internal neighbors
+    personal->server_fd = -1;   // file descriptor for a server node
+    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
+    personal->client_fd = -1;   // file descriptor for a client node  
+    personal->udp_port = NULL;   //UDP server port
+    personal->udp_address = NULL;    //UDP server address
+    personal->extern_node = NULL;   //extern neighbor node
+    personal->backup_node = NULL;   //backup neighbor node
+   
+    /* set the start of the list to NULL */
+
+    personal->contents = NULL; 
+
+    //init internal_fds array
+
+    for (iter = 0; iter < MAX_INTERNALS; iter++) {
+        personal->internal_fds[iter] = -1;
+    }
+    
+    //init neighbors array
+
+    personal->neighbrs = (nodeinfo_t **)malloc(MAX_INTERNALS * sizeof(nodeinfo_t *));
+    for (iter = 0; iter < MAX_INTERNALS; iter++) {
+        personal->neighbrs[iter] = NULL;
+    }   
+
+    return personal;
+}//personal_init()
+
+
+ void free_contact(nodeinfo_t *contact){
+    
+    free(contact->node_id);
+    free(contact->network);
+    free(contact->tcp_port);
+    free(contact->node_addr);    
+    free(contact);
+
+    return;
+}//free_contact()
+
+
+ struct personal_node *reset_personal(struct personal_node *personal){
+   
+    int iter = 0;
+    /* reset the routing table */
+
+    for(iter = 0; iter < MAX_INTERNALS; iter++){
+
+        personal->route_tab[iter] = -1;
+    }
+
+    /* clear the memory for the contacts */
+
+    for(iter = 0; iter < MAX_INTERNALS; iter++){
+
+        if(personal->neighbrs[iter] != NULL){
+            free_contact(personal->neighbrs[iter]);
+            personal->neighbrs[iter] = NULL;
+        } 
+    }
+
+    /*clear extern and backup nodes*/
+    if (personal->extern_node != NULL){        
+        free_contact(personal->extern_node);
+        personal->extern_node = NULL;
+    }
+            
+    if (personal->backup_node != NULL){
+        free_contact(personal->backup_node);
+        personal->backup_node = NULL;
+    }
+
+    personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
+    personal->n_internals = 0;    // counter for the number of internal neighbors
+    personal->server_fd = -1;   // file descriptor for a server node
+    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
+    personal->client_fd = -1;   // file descriptor for a client node
+
+    return personal;
+
+}//reset_personal()
+
+ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
+
+    memset(dest->node_id, 0, 3 * sizeof(*dest->node_id));
+    strcpy(dest->node_id, src->node_id);
+
+    memset(dest->network, 0, 4 * sizeof(*dest->network));
+    strcpy(dest->network, src->network);
+
+    memset(dest->tcp_port, 0, 6 * sizeof(*dest->tcp_port));
+    strcpy(dest->tcp_port, src->tcp_port);
+    
+    memset(dest->node_addr, 0, MAX_ADDRESS_SIZE * sizeof(*dest->node_addr));
+    strcpy(dest->node_addr, src->node_addr);
+
+    return;
+}//contact_copy()
