@@ -648,6 +648,15 @@ void select_cmd(struct personal_node *personal, char *input){
     return success_flag;
 }//show_names
 
+int show_interest_table (){
+
+
+
+    return success_flag;
+}
+
+
+
  int show_routing(int *routing_tab){
 
     int iter;

@@ -37,6 +37,7 @@
 #define delete_str  "delete"    // user cmd delete
 #define show_topology_str "st" // user cmd st (show topology)
 #define show_names_str "sn"    // user cmd sn (show names)
+#define show_interest_table_str "si"  // user cmd si (show interest table)
 #define show_routing_str "sr"  // user cmd sr (show routing)
 #define clear_routing_str "cr" // user cmd cr (clear routing)
 #define clear_names_str "cn"   // user cmd cn (clear names)
