@@ -76,9 +76,9 @@ int main(int argc, char **argv){
 
         personal_addr = argv[2];
         
-        if(strtol(argv[3], num_string_check, 10) < 0 || errno == ERANGE){
+        if(strtol(argv[3], num_string_check, 10) < 0 || strtol(argv[3], num_string_check, 10) > 65535){
             printf("Error in personal port: number out of range\n");
-            printf("Pick a number between 0 and 4294967295 (65565 might be the MAXPORT)\n");
+            printf("Pick a number between 0 and 65535\n");
             printf("Process terminated\n");
             exit(1);
         }
@@ -100,7 +100,7 @@ int main(int argc, char **argv){
 
     if (argc == 5)
     {
-        cache_size = strtol(argv[1], num__string_check, 10);
+        cache_size = strtol(argv[1], num_string_check, 10);
 
         if(cache_size < 0 || errno == ERANGE){
             printf("Error in cache size: number out of range\n");
@@ -249,20 +249,19 @@ int main(int argc, char **argv){
 
     if(tcp_server(my_node) == 1){ //caso haja algum erro no início desta função, sai suavemente 
         leave(my_node);
-        free(my_node->neighbrs);
-        free(my_node->route_tab);
+        free(my_node->neighbrs);    
         free_contact(my_node->persn_info);
 
         if(my_node->contents != NULL){
         
-            contentList_t *listptr; // pointer to go through the list
-            contentList_t *aux;     // auxiliary pointer to delete elements in the lists
-            listptr = my_node->contents;
+            objectQueue_t *queue_ptr; // pointer to go through the list
+            objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
+            queue_ptr = my_node->contents;
             
-            while(listptr != NULL){
+            while(queue_ptr != NULL){
 
-                aux = listptr;
-                listptr = listptr->next;
+                aux = queue_ptr;
+                queue_ptr = queue_ptr->next;
                 free(aux->string);
                 free(aux);
                 

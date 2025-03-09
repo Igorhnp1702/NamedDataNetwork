@@ -54,7 +54,7 @@
 
 #define help_str "help"                     // user cmd help
 #define help_str_short "h"                  // short for help
-#define clear_str "clear"             // partial cmd string
+#define clear_str "clear"                   // partial cmd string
 #define clear_names_str_short "cn"          // short for clear names
 
 // set of strings for the messages
@@ -75,6 +75,8 @@
 #define object_str "OBJECT"     // TCP msg OBJECT
 #define noobject_str "NOOBJECT" // TCP msg NOOBJECT
 
+int udp_flag = 0;
+
 /*------------------------------------User inteface funcions----------------------------------------*/
 
 /****************************************************************
@@ -93,218 +95,7 @@
  ***************************************************************/
 void select_cmd(struct personal_node *personal, char *input);
 
-/***************************************************************
- * join()
- *
- * Description:
- *
- *  -Entry of a node with "id" as identifier in the network;
- *  -If "id" is already in use by another node, an unique id will be assigned;
- *  -Rgistration of the node in the server
- *  -The node will link to a node of his choosing;
- *
- * Arguments:
- *
- *  -personal = a pointer to the personal node
- *  -net = network identifier;
- *  -id = node identifier;
- *
- * Return: 0 on success, 1 on failure;
- **************************************************************/
- int join(struct personal_node *personal, char *net);
 
-/***************************************************************
- * djoin()
- *
- * Description:
- *
- *  -Entry of the personal node with "id" as the index in the network "net";
- *  -Entry of a node with "id" as identifier in the network;
- *  -The node will be connected to another node passed in the argument;
- * (with the boot parameters);
- *  -The node server will be bypassed;
- *  -If "bootid" is equal to "id" then a network with only one node will be created;
- *
- * Arguments:
- *
- *  -personal = the structure of variables of the personal node
- *  -net = network identifier;
- *  -id = node;
- *  -bootid = second node index;
- *  -bootIP = second node IP address;
- *  -bootTCP = second node TCP port;
- *
- * Return: 0 on success; 1 on failure;
- **************************************************************/
- int djoin(struct personal_node *personal, char *net, char *connectIP, char *connectTCP);
-
-/***************************************************************
- * create()
- *
- *  Description:
- *
- *  -Insert "name" in the linked list of contents;
- *
- *  Arguments:
- *
- *  -new_object = the head of the linked list of contents;
- *  -name = name of content;
- *
- * Return: A pointer to the updated list of contents;
- **************************************************************/
-objectList_t *create(objectList_t *new_object, char *name);
-
-/***************************************************************
- * delete()
- *
- *  Description:
- *
- *  -Remove "name" from the linked list of contents;
- *
- *  Arguments:
- *
- *  -contents = a pointer to the linked list of contents;
- *  -name = name of content;
- *
- *  Return: A pointer to the updated list of contents;
- **************************************************************/
- contentList_t *delete(contentList_t *contents, char *name); 
-
-/***************************************************************
- * get()
- *
- *  Description:
- *
- *  -Searches for content of name "name" located in node "dest_id".
- *
- *  Arguments:
- *
- *  -personal = a pointer to the personal node;
- *  -dest_id = the index of the node where "name" is being searched;
- *  -name = name of content;
- *
- *  Return: 0 on success; 1 on failure;
- **************************************************************/
- int get(struct personal_node *personal, char *dest_id, char *name);
-
-/***************************************************************
- * show_topology()
- *
- *  Description:
- *
- *  -Show indexes, tcp ports and addresses of all neighbours
- *
- *  Arguments:
- *
- *  -personal = a pointer to the personal node;
- *
- *  Return: 0 on success; 1 on failure;
- **************************************************************/
- int show_topology(struct personal_node *personal);
-
-/***************************************************************
- * show_names()
- *
- *  Description:
- *
- *  -Show the names of all contents located in the personal node's list;
- *
- *  Arguments:
- *
- *  -personal = a pointer to the list of contents;
- *
- *  Return: 0 on success; 1 on failure;
- **************************************************************/
- int show_names(contentList_t **contents);
-
-/***************************************************************
- * show_interest_table()
- *
- *  Description:
- *
- *  -Shows all the entries in the personal node's interest table;
- *
- *  Arguments:
- *
- *  -personal = a pointer to the interest table;
- *
- *  Return: 0 on success; 1 on failure;
- **************************************************************/
- int show_interest_table(contentList_t **contents);
-
-/***************************************************************
- * show_routing()
- *
- *  Description:
- *
- *  -Shows the personal node's expedition table;
- *
- *  Arguments:
- *
- *  -personal = a pointer to the expedition table;
- *
- *  Return: 0 on success; 1 on failure;
- **************************************************************/
-
- int show_routing(int *routing_tab);
-
-/**************************************************************
- * clear_routing()
- *
- *  Description:
- *
- *  -Clear the routing table of the personal node
- *
- *  Arguments:
- *
- -A pointer to the personal node
- *
- *  Return: 0 on success; 1 on failure;
- **************************************************************/
- int clear_routing(int *routing_tab);
-
-/***************************************************************
- * clear_names()
- *
- *  Description:
- *
- *  -Clear all the names in the contents table
- *
- *  Arguments:
- *
- *  -The array of contents
- *
- *  Return: A pointer to the updated list of contents
- **************************************************************/
- contentList_t *clear_names(contentList_t *contents);
-
-/***************************************************************
- * leave()
- *
- *  Description:
- *
- *  -Remove the node from the current network;
- *
- *  Arguments:
- *
- *  -personal = a pointer to the personal node;
- *
- * Return: 0 on success; 1 on failure;
- **************************************************************/
- int leave(struct personal_node *personal);
-
-/***************************************************************
- * help_menu()
- *
- *  Description:
- *
- *  -prints help menu, commands explanation;
- * 
- *  Arguments: void
- * 
- * Return: void
- **************************************************************/
- void help_menu(void);
 
 
 

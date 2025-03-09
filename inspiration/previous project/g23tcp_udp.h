@@ -57,7 +57,7 @@
  *
  *  Description:
  *
- *  - -Sends a message over UDP and handles the responce from the server
+ *  - -Sends a message over UDP and handles the response from the server
  *
  *  Arguments:
  *

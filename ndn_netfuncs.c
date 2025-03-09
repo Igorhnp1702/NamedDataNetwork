@@ -10,15 +10,28 @@
  ***********************************************************************************************/
 
 // general purpose libraries
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/types.h>
+#include <errno.h>
+
+// networking libraries
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <signal.h>
 
 // project libraries
 #include "ndn_io.h"
 #include "ndn_netfuncs.h"
 #include "ndn_utils.h"
 
- nodeinfo_t *contact_init(nodeinfo_t *contact){
+nodeinfo_t *contact_init(nodeinfo_t *contact){
 
     contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t)); // the block itself
 
@@ -32,7 +45,7 @@
 }//contact_init()
 
 
- struct personal_node *personal_init(struct personal_node *personal){
+struct personal_node *personal_init(struct personal_node *personal){
 
     int iter = 0;
 
@@ -41,8 +54,7 @@
     personal->persn_info = contact_init(personal->persn_info);
 
     personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
-    personal->n_internals = 0;    // counter for the number of internal neighbors
-    personal->server_fd = -1;   // file descriptor for a server node
+    personal->n_internals = 0;    // counter for the number of internal neighbors    
     personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
     personal->client_fd = -1;   // file descriptor for a client node  
     personal->udp_port = NULL;   //UDP server port
@@ -52,28 +64,22 @@
    
     /* set the start of the list to NULL */
 
-    personal->contents = NULL; 
-
-    //init internal_fds array
-
-    for (iter = 0; iter < MAX_INTERNALS; iter++) {
-        personal->internal_fds[iter] = -1;
-    }
-    
+    personal->queue_ptr = NULL; 
+            
     //init neighbors array
 
-    personal->neighbrs = (nodeinfo_t **)malloc(MAX_INTERNALS * sizeof(nodeinfo_t *));
+    personal->internals_array = (nodeinfo_t **)malloc(MAX_INTERNALS * sizeof(nodeinfo_t *));
     for (iter = 0; iter < MAX_INTERNALS; iter++) {
-        personal->neighbrs[iter] = NULL;
+        personal->internals_array[iter] = NULL;
     }   
 
     return personal;
 }//personal_init()
 
 
- void free_contact(nodeinfo_t *contact){
+void free_contact(nodeinfo_t *contact){
     
-    free(contact->node_id);
+    free(contact->node_buff);
     free(contact->network);
     free(contact->tcp_port);
     free(contact->node_addr);    
@@ -83,23 +89,17 @@
 }//free_contact()
 
 
- struct personal_node *reset_personal(struct personal_node *personal){
+struct personal_node *reset_personal(struct personal_node *personal){
    
     int iter = 0;
-    /* reset the routing table */
-
-    for(iter = 0; iter < MAX_INTERNALS; iter++){
-
-        personal->route_tab[iter] = -1;
-    }
 
     /* clear the memory for the contacts */
 
     for(iter = 0; iter < MAX_INTERNALS; iter++){
 
-        if(personal->neighbrs[iter] != NULL){
-            free_contact(personal->neighbrs[iter]);
-            personal->neighbrs[iter] = NULL;
+        if(personal->internals_array[iter] != NULL){
+            free_contact(personal->internals_array[iter]);
+            personal->internals_array[iter] = NULL;
         } 
     }
 
@@ -115,8 +115,7 @@
     }
 
     personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
-    personal->n_internals = 0;    // counter for the number of internal neighbors
-    personal->server_fd = -1;   // file descriptor for a server node
+    personal->n_internals = 0;    // counter for the number of internal neighbors    
     personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
     personal->client_fd = -1;   // file descriptor for a client node
 
@@ -124,10 +123,7 @@
 
 }//reset_personal()
 
- void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
-
-    memset(dest->node_id, 0, 3 * sizeof(*dest->node_id));
-    strcpy(dest->node_id, src->node_id);
+void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
 
     memset(dest->network, 0, 4 * sizeof(*dest->network));
     strcpy(dest->network, src->network);
@@ -137,6 +133,9 @@
     
     memset(dest->node_addr, 0, MAX_ADDRESS_SIZE * sizeof(*dest->node_addr));
     strcpy(dest->node_addr, src->node_addr);
+
+    memset(dest->node_buff, 0, MAX_MSG_LENGTH * sizeof(*dest->node_buff));
+    strcpy(dest->node_buff, src->node_buff);
 
     return;
 }//contact_copy()

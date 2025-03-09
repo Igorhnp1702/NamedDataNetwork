@@ -28,7 +28,7 @@
 #include <netinet/in.h>
 #include <sys/select.h>
 
-int udp_flag = 0;
+int udp_flag = 0; // 0 means djoin, 1 means join
 
 /* ----------------------------utility functions-------------------------------- */
 
