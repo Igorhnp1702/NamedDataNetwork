@@ -9,10 +9,10 @@
  * Description: header file for the network functionalities
  ***********************************************************************************************/
 
-#ifndef ndn_netfuncs_header
-#define ndn_netfuncs_header
+#ifndef ndn_node_header
+#define ndn_node_header
 
-#include <ndn_utils.h>
+#include <ndn_queue.h>
 
 #define MAX_INTERNALS 99
 
@@ -74,11 +74,12 @@ int anchorflag;                  // flag that says whether the node is an anchor
 int n_internals;                 // counter for the number of internal neighbors
 int max_fd;                      // the maximum integer assigned to a file descriptor in this node's FD set
 int client_fd;                   // file descriptor to communicate with the extern node
+int server_fd;                   // to accept connections with other nodes
 char *udp_port;                  // UDP port of the server of nodes
 char *udp_address;               // UDP address of the server of nodes
 fd_set rdy_scks;                 // set of file descriptors with activity to handle (rdy = ready)
 fd_set crr_scks;                 // set of file descriptors in use (crr = current)
-objectQueue_t *queue_ptr;        // linked list of the contents of the node
+objectQueue_t *queue_ptr;        // double linked list of the contents of the node
 nodeinfo_t *extern_node;         // contact of the extern neighbor node
 nodeinfo_t *backup_node;         // contact of the backup neighbor node
 nodeinfo_t **internals_array;    // array of contacts of intern neighbors. 

@@ -27,9 +27,9 @@
 #include <signal.h>
 
 // project libraries
-#include "ndn_io.h"
-#include "ndn_netfuncs.h"
-#include "ndn_utils.h"
+#include "ndn_commands.h"
+#include "ndn_node.h"
+#include "ndn_queue.h"
 
 nodeinfo_t *contact_init(nodeinfo_t *contact){
 

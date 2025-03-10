@@ -27,9 +27,9 @@
 #include <signal.h>
 
 // project libraries
-#include "ndn_netfuncs.h"
-#include "ndn_io.h"
-#include "ndn_utils.h"
+#include "ndn_node.h"
+#include "ndn_commands.h"
+#include "ndn_queue.h"
 
 
 
@@ -348,8 +348,29 @@ int main(int argc, char **argv){
         select_ctrl = select(my_node->max_fd + 1, &my_node->rdy_scks, (fd_set*)NULL, (fd_set*)NULL, (struct timeval*)NULL);
 
         if (select_ctrl < 0) {         
-            printf("Error in select: %s. Terminating process\n", strerror(errno));
-            return ++success_flag;    
+            printf("Error in select: %s.\nProcess terminated\n", strerror(errno));
+            leave(my_node);        
+            free(my_node->internals_array);
+            free_contact(my_node->persn_info);
+
+            if(my_node->contents != NULL){
+            
+                objectQueue_t *queue_ptr; // pointer to go through the list
+                objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
+                queue_ptr = my_node->contents;
+                
+                while(queue_ptr != NULL){
+
+                    aux = queue_ptr;
+                    queue_ptr = queue_ptr->next;
+                    free(aux->string);
+                    free(aux);
+                    
+                }                            
+            }
+                
+            free(my_node);
+            exit(1);                
         }
         
         //Go through all FDs and see which ones have activity
@@ -357,6 +378,7 @@ int main(int argc, char **argv){
 
             if (FD_ISSET(fd_itr, &my_node->rdy_scks)) {
                 
+                // read and process user input
                 if (fd_itr == STDIN_FILENO) {
                     memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'                                         
                     fgets(buffer, MAX_MSG_LENGTH-1, stdin);
@@ -366,6 +388,8 @@ int main(int argc, char **argv){
 
                     select_cmd(my_node, buffer);                     
                 }
+
+                // accept a connection, if you can
                 else if (fd_itr == my_node->server_fd && strcmp(my_node->persn_info->network, "") != 0) { // atividade no servidor e estou na rede
                     srv_addrlen = sizeof(srv_addr);
                     if((new_fd = accept(my_node->server_fd, &srv_addr, &srv_addrlen)) == -1){
@@ -377,6 +401,8 @@ int main(int argc, char **argv){
                     if (new_fd > my_node->max_fd) my_node->max_fd = new_fd;
                     
                 }
+
+                // read a message from a node
                 
                 else {
                     memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'
@@ -411,33 +437,32 @@ int main(int argc, char **argv){
                                 memset(msg, 0, sizeof(msg));
                                 sprintf(msg, "%s %02d\n", withdraw_str, atoi(my_node->extern_node->node_id));
                                 for (i = 0; i < MAX_INTERNALS; i++) {
-                                    if (my_node->neighbrs[i] != NULL) {
-                                        send_tcp(my_node, my_node->neighbrs[i], msg);
+                                    if (my_node->internals_array[i] != NULL) {
+                                        send_tcp(my_node, my_node->internals_array[i], msg);
                                     }
                                 }
                                 sleep(0.5);
                             }
                             
                             if (strcmp(my_node->backup_node->node_id, my_node->persn_info->node_id) != 0) { //not an anchor                                                        
-                                contact_copy(my_node->extern_node, my_node->backup_node);
-                                memset(my_node->backup_node->node_id, 0, 3 * sizeof(*my_node->backup_node->node_id));
+                                contact_copy(my_node->extern_node, my_node->backup_node);                                
                                 memset(my_node->backup_node->network, 0, 4 * sizeof(*my_node->backup_node->network));
                                 memset(my_node->backup_node->tcp_port, 0, 6 * sizeof(*my_node->backup_node->tcp_port));
                                 memset(my_node->backup_node->node_addr, 0, 50 * sizeof(*my_node->backup_node->node_addr));
 
                                 memset(msg, 0, sizeof(msg));
-                                sprintf(msg, "%s %s %s %s\n", new_str, my_node->persn_info->node_id, my_node->persn_info->node_addr, my_node->persn_info->tcp_port);
-                                //Sends NEW message , receives EXTERN response and updates backup node
+                                sprintf(msg, "%s %s %s\n", entry_str, my_node->persn_info->node_addr, my_node->persn_info->tcp_port);
+                                //Sends ENTRY message , receives SAFE response and updates backup node
                                 if(send_tcp(my_node, my_node->extern_node, msg) == 1){
                                     printf("Failed to send a message\n");
                                 }
 
                                 memset(msg, 0, sizeof(msg));
-                                    sprintf(msg, "%s %s %s %s\n", extern_str, my_node->extern_node->node_id, 
+                                    sprintf(msg, "%s %s %s\n", safe_str, 
                                         my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                                     for (j = 0; j < MAX_INTERNALS; j++) {
-                                        if (my_node->neighbrs[j] != NULL) {
-                                            send_tcp(my_node, my_node->neighbrs[j], msg);
+                                        if (my_node->internals_array[j] != NULL) {
+                                            send_tcp(my_node, my_node->internals_array[j], msg);
                                         }
                                     }
 
@@ -447,20 +472,20 @@ int main(int argc, char **argv){
                             }
                             else if (my_node->n_neighbrs > 0) { //anchor
                                 for (i = 0; i < MAX_INTERNALS; i++) {
-                                    if (my_node->neighbrs[i] != NULL) {
-                                        contact_copy(my_node->extern_node, my_node->neighbrs[i]);
+                                    if (my_node->internals_array[i] != NULL) {
+                                        contact_copy(my_node->extern_node, my_node->internals_array[i]);
                                         my_node->client_fd = my_node->neighbrs_fd[i];
 
                                         memset(msg, 0, sizeof(msg));
-                                        sprintf(msg, "%s %s %s %s\n", extern_str, my_node->extern_node->node_id, 
+                                        sprintf(msg, "%s %s %s %s\n", safe_str, my_node->extern_node->node_id, 
                                             my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                                         for (j = 0; j < MAX_INTERNALS; j++) {
-                                            if (my_node->neighbrs[j] != NULL) {
-                                                send_tcp(my_node, my_node->neighbrs[j], msg);
+                                            if (my_node->internals_array[j] != NULL) {
+                                                send_tcp(my_node, my_node->internals_array[j], msg);
                                             }
                                         }
-                                        free_contact(my_node->neighbrs[i]);
-                                        my_node->neighbrs[i] = NULL;
+                                        free_contact(my_node->internals_array[i]);
+                                        my_node->internals_array[i] = NULL;
                                         my_node->n_neighbrs--;
                                         my_node->neighbrs_fd[i] = -1;
                                         break;
@@ -490,9 +515,9 @@ int main(int argc, char **argv){
                                 printf("Client: %02d, with FD: %d, disconnected!\n", i, fd_itr);
                                 
 
-                                if(my_node->neighbrs[disc_nodeid] != NULL){
-                                    free_contact(my_node->neighbrs[disc_nodeid]);
-                                    my_node->neighbrs[disc_nodeid] = NULL;
+                                if(my_node->internals_array[disc_nodeid] != NULL){
+                                    free_contact(my_node->internals_array[disc_nodeid]);
+                                    my_node->internals_array[disc_nodeid] = NULL;
                                     my_node->n_neighbrs--;
                                     my_node->neighbrs_fd[disc_nodeid] = -1;
                                     
@@ -507,8 +532,8 @@ int main(int argc, char **argv){
                                     printf("Failed to send a message\n"); //msg for external neighbor 
                                 }
                                 for (i = 0; i < MAX_INTERNALS; i++) {
-                                    if (my_node->neighbrs[i] != NULL) {
-                                        if(send_tcp(my_node, my_node->neighbrs[i], msg) == 1){//msg for internal neighbors
+                                    if (my_node->internals_array[i] != NULL) {
+                                        if(send_tcp(my_node, my_node->internals_array[i], msg) == 1){//msg for internal neighbors
                                             printf("Failed to send a message\n");
                                         }     
                                     }
@@ -516,16 +541,7 @@ int main(int argc, char **argv){
                             }            
 
                         }                               
-                        my_node->route_tab[disc_nodeid] = -1;
-                        printf("%02d was removed from the routing table as a destination\n", disc_nodeid);
-
-                        for(int i = 0; i < MAX_INTERNALS; i++){
                         
-                            if(my_node->route_tab[i] == disc_nodeid){
-                                my_node->route_tab[i] = -1;
-                            }
-                        }
-                        printf("%02d was removed from the routing table as a neighbor\n", disc_nodeid);
                         FD_CLR(fd_itr, &my_node->crr_scks);                                                        
                     }
                     else{                        
@@ -533,16 +549,15 @@ int main(int argc, char **argv){
                         if(rcv_tcp(my_node, buffer, &fd_itr) == 1){
                             printf("Failed to send %s\n", buffer);
                         }
-                    }//else
-                    ptimeout = NULL;
-                }
+                    }//else                    
+                }//else
             }//if
         }//for
     }//while
 
     if(tcp_server(my_node) == 1){ //caso haja algum erro no início desta função, sai suavemente 
         leave(my_node);
-        free(my_node->neighbrs);    
+        free(my_node->internals_array);    
         free_contact(my_node->persn_info);
 
         if(my_node->contents != NULL){
