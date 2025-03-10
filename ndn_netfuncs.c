@@ -93,7 +93,7 @@ struct personal_node *reset_personal(struct personal_node *personal){
    
     int iter = 0;
 
-    /* clear the memory for the contacts */
+    /* clear the memory for the internal nodes */
 
     for(iter = 0; iter < MAX_INTERNALS; iter++){
 

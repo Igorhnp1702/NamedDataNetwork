@@ -12,18 +12,18 @@
 #ifndef ndn_io_header
 #define ndn_io_header
 
-#define DEFAULT_REGIP "193.136.138.142" // default IPv4 address of the node server
-#define DEFAULT_REGUDP "59000"          // default UDP port of the node server
-#define MAX_QUEUE_LENGTH_TCP 6          // maximium size of the tcp queue
-#define MAX_NODESLIST 4000              // size of the buffer for the NODESLIST response
-#define MAX_MSG_LENGTH 200              // size of the buffer for the messages (incoming/outgoing)
-#define MAX_USR_CMD_LENGTH 150          // size of the buffer for the commands
-#define MAX_CONTENT_NAME 101            // size of the buffer for the contents (max chars = 100 + null terminator)
-#define MAX_ADDRESS_SIZE 50             // size of the buffer for non_determinístic ip address
-#define MAX_NET_CHARS 4                 // number of chars required for the network number (with '\0')
-#define MAX_TCP_UDP_CHARS 6             // number of chars required for the tcp/udp ports(with '\0')
-#define MAX_MSG_CMD_SIZE 10             // size of the biggest message protocol (NOCONTENT = 9 bytes + null terminator)
-#define TIMEOUT_VALUE_s 5  //!repor!!!             // timeout value in seconds 
+#define DEFAULT_REGIP "193.136.138.142"  // default IPv4 address of the node server
+#define DEFAULT_REGUDP "59000"           // default UDP port of the node server
+#define MAX_QUEUE_LENGTH_TCP 6           // maximium size of the tcp queue
+#define MAX_NODESLIST 4000               // size of the buffer for the NODESLIST response
+#define MAX_MSG_LENGTH 200               // size of the buffer for the messages (incoming/outgoing)
+#define MAX_USR_CMD_LENGTH 150           // size of the buffer for the commands
+#define MAX_CONTENT_NAME 101             // size of the buffer for the contents (max chars = 100 + null terminator)
+#define MAX_ADDRESS_SIZE 50              // size of the buffer for non_determinístic ip address
+#define MAX_NET_CHARS 4                  // number of chars required for the network number (with '\0')
+#define MAX_TCP_UDP_CHARS 6              // number of chars required for the tcp/udp ports(with '\0')
+#define MAX_MSG_CMD_SIZE 10              // size of the biggest message protocol (NOCONTENT = 9 bytes + null terminator)
+#define TIMEOUT_VALUE_s 5  //!repor!!!   // timeout value in seconds 
 
 // set of strings for the mandatory commands
 
