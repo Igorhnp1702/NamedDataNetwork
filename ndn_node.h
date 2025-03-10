@@ -1,12 +1,12 @@
 /************************************************************************************************
- * ndn_netfuncs.c
+ * ndn_node.h
  *
  * Authors:
  *
  * -Igor Paruque ist1102901
  * -Mónica Ferreira ist106520
  *
- * Description: header file for the network functionalities
+ * Description: header file for node management
  ***********************************************************************************************/
 
 #ifndef ndn_node_header

@@ -1,12 +1,12 @@
 /************************************************************************************************
- * ndn_main.c
+ * ndn_commands.h
  *
  * Authors:
  *
  * -Igor Paruque ist1102901
  * -Mónica Ferreira ist106520
  *
- * Description: header file for the input/output functions
+ * Description: header file for the commands
  ***********************************************************************************************/
 
 #ifndef ndn_commands_header
@@ -23,8 +23,7 @@
 #define MAX_NET_CHARS 4                  // number of chars required for the network number (with '\0')
 #define MAX_TCP_UDP_CHARS 6              // number of chars required for the tcp/udp ports(with '\0')
 #define MAX_MSG_CMD_SIZE 10              // size of the biggest message protocol (NOCONTENT = 9 bytes + null terminator)
-#define TIMEOUT_VALUE_s 5  //!repor!!!   // timeout value in seconds 
-
+ 
 // set of strings for the mandatory commands
 
 #define join_str "join"                     // user cmd join

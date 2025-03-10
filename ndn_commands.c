@@ -6,7 +6,7 @@
  * -Igor Paruque ist1102901
  * -Mónica Ferreira ist106520
  *
- * Description: source code for input/output functions
+ * Description: source code for the commands
  ***********************************************************************************************/
 
 #include <arpa/inet.h>

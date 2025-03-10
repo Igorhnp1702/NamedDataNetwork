@@ -6,7 +6,7 @@
  * -Igor Paruque ist1102901
  * -Mónica Ferreira ist106520
  *
- * Description: source code for the utility functions
+ * Description: source code for the object queue
  ***********************************************************************************************/
 
  // general purpose libraries
@@ -24,6 +24,7 @@
 
 // project libraries
 #include "ndn_commands.h"
+#include "ndn_messages.h"
 #include "ndn_node.h"
 #include "ndn_queue.h"
 
