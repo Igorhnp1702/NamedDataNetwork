@@ -12,7 +12,15 @@
  // general purpose libraries
 #include <stdlib.h>
 #include <string.h>
+
+
+// networking libraries
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <signal.h>
 
 // project libraries
 #include "ndn_io.h"
@@ -27,19 +35,94 @@ int join(struct personal_node *personal, char *net) {
     int success_flag = 0;
 
     if(strcmp(personal->persn_info->network, "") != 0){
-        printf("The node is already inside a network. Command ignored\n");
+        printf("Error in join: The node is already inside a network. Command ignored\n");
         return ++success_flag;
     }
     if(check_net(net) == 1){
-        printf("The network is invalid. Command ignored\n");
+        printf("Error in join: The network is invalid. Command ignored\n");
         printf("Please insert a three digit network from 000 to 999\n");
         return ++success_flag;
     }
 
     char msg[MAX_MSG_LENGTH];      memset(msg, 0, sizeof(msg));
     udp_flag++; 
+    
+    struct addrinfo srv_criteria, *srv_result;
+    int fd, errflag;
+    ssize_t cnt;
+    struct sockaddr_in addr_conf;
+    socklen_t addrlen_conf;
+    char *buffer = (char*)calloc(MAX_NODESLIST, sizeof(char));
 
-    strcpy(personal->persn_info->node_id, id);
+    fd = socket(AF_INET, SOCK_DGRAM, 0) ;
+    if(fd == -1) return NULL;
+
+    memset(&srv_criteria, 0, sizeof(srv_criteria));
+    srv_criteria.ai_family = AF_INET;
+    srv_criteria.ai_socktype = SOCK_DGRAM;
+
+    errflag = getaddrinfo(personal->udp_address, personal->udp_port, &srv_criteria, &srv_result);
+    if(errflag != 0) return NULL;
+
+    cnt = sendto(fd, msg, strlen(msg), 0, srv_result->ai_addr, srv_result->ai_addrlen);
+    if(cnt == -1) return NULL;
+
+    freeaddrinfo(srv_result);
+
+    addrlen_conf = sizeof(struct sockaddr_in);
+    cnt = recvfrom(fd, buffer, MAX_NODESLIST, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
+    if(cnt == -1) return -1;
+    buffer[cnt] = '\0';
+
+    if (strcmp(inet_ntoa(addr_conf.sin_addr), personal->udp_address) != 0) { //Verification
+        strcpy(buffer, "0");
+    }
+
+    close(fd);
+    token = strtok(buffer, delim);
+            while (token != NULL) {             //Go through all the lines and populate an array with the available ID's
+                if (flag > 0) {                                             //Iterating line by line, descarding the first one
+                    sscanf(token, "%s %s %s", ls_id, ls_ip, ls_tcp);        //ls_id, ls_ip and ls_tcp are the contacts from the node in that line
+                    free_id[atoi(ls_id)] = 1;                               //available ID's array
+                }
+                token = strtok(NULL, delim);
+                flag = 1;
+            }
+
+            if (ls_id[0] == '\0') {
+                strcpy(ls_id, slf_node->persn_info->node_id);
+                strcpy(ls_ip, slf_node->persn_info->node_addr);
+                strcpy(ls_tcp, slf_node->persn_info->tcp_port);
+            }
+
+            if (free_id[atoi(slf_node->persn_info->node_id)] != 0) {     //If the chosen ID is available, this if statmnent is skipped   
+                for (cnt = 0, flag = 0; cnt < 99 && flag == 0; cnt++) {  //If the chosen ID isn't available, the first one available in free_id will be chosen   
+                    if (free_id[cnt] == 0) {
+                        sprintf(aux_id_str, "%02d", cnt);
+                        strcpy(slf_node->persn_info->node_id, aux_id_str);
+                        flag = 1;
+                        printf("The chosen ID is not available!\nThe assigned ID is: %s\n", slf_node->persn_info->node_id);
+                    }
+                }
+                if (flag == 0) {                                       
+                    printf("Error in send_udp: The network is full!\n");
+                    return ++success_flag;
+                }
+            }
+            //djoin, TCP connection with neighbor
+
+            memset(slf_node->persn_info->network, 0, 4*sizeof(char));
+            if(djoin(slf_node, network, slf_node->persn_info->node_id, ls_id, ls_ip, ls_tcp) == 1) {
+                printf("send_udp->join->djoin: Failed!\n");
+                return ++success_flag;
+            }
+            //register node in node server
+            if (rcv_msg != NULL) {
+                free(rcv_msg);
+            }
+    
+    djoin();
+    //either print the successfull registration, or an error message
 
     sprintf(msg, "%s %s\n", nodes_str, net);
     success_flag = send_udp(personal, msg);
@@ -54,11 +137,11 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
     int success_flag = 0;
 
     if(strcmp(personal->persn_info->network, "") != 0){
-        printf("The node is already inside a network. Command ignored\n");
+        printf("Error in direct join: The node is already inside a network. Command ignored\n");
         return ++success_flag;
     }
     if(check_net(net) == 1){
-        printf("The network is invalid. Command ignored\n");
+        printf("Error in direct join: The network is invalid. Command ignored\n");
         printf("Please insert a three digit network from 000 to 999\n");
         return ++success_flag;
     }
@@ -66,7 +149,7 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
     if(udp_flag == 0){
            
         if(check_ports(connectTCP) == 1){
-            printf("The boot TCP port is invalid. Command ignored\n");
+            printf("Error in direct join: The boot TCP port is invalid. Command ignored\n");
             printf("Please insert a 1 to 5 digit TCP port from 0 to 65536");
             return ++success_flag;
         }
@@ -92,7 +175,7 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
         sprintf(msg, "%s %s %s\n", entry_str, personal->persn_info->node_addr, personal->persn_info->tcp_port);
         //Sends ENTRY message , receives SAFE response and updates backup node
         if(send_tcp(personal, personal->extern_node, msg)){
-            printf("Failed to join the network\n");
+            printf("Error in direct join: Failed to join the network\n");
             return 1;
         }
         // check if it's an anchor
@@ -116,7 +199,7 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
 objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100, alphanumeric chars only
 
     if(check_name(name) == 1){
-        printf("Failed to create a content. Name was not valid\n");
+        printf("Error in create: invalid name\n");
         return contents;
     }
     
@@ -151,12 +234,12 @@ objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100
 objectQueue_t *delete(objectQueue_t *contents, char *name) {
     
     if(check_name(name) == 1){
-        printf("Error: Invalid name\n");
+        printf("Error in delete: Invalid name\n");
         return contents;
     }
 
     if(contents == NULL){
-        printf("Error: No contents available\n");
+        printf("Error in delete: No contents available\n");
         return contents;
     }
 
@@ -180,7 +263,7 @@ objectQueue_t *delete(objectQueue_t *contents, char *name) {
     while(queue_ptr != NULL){
 
         if(queue_ptr->next == NULL && strcmp(queue_ptr->string, name) != 0){            
-            printf("Error: The name was not found\n");
+            printf("Error in delete: The name was not found\n");
             return contents;
         }
         
@@ -216,7 +299,7 @@ int retrieve(struct personal_node *personal, char *name){
 
     int success_flag = 0;
     if(strcmp(personal->persn_info->network, "") == 0){
-        printf("Error: You are not inside a network\n");
+        printf("Error in retrieve: You are not inside a network\n");
         return ++success_flag;
     }
     
@@ -284,7 +367,7 @@ int show_topology(struct personal_node *personal){
         
     }
     else{
-        printf("Error: You are not inside a network\n");
+        printf("Error in show topology: You are not inside a network\n");
         return ++success_flag;
     }
     
@@ -369,7 +452,7 @@ int show_interest_table (struct personal_node *personal) {
     int success_flag = 0;
 
     if(strcmp(personal->persn_info->network, "") == 0){
-        printf("Error: You are not inside a network\n");
+        printf("Error in show interest table: You are not inside a network\n");
         return ++success_flag;
     }
 
@@ -418,7 +501,8 @@ objectQueue_t *clear_names(objectQueue_t *contents){
 int leave(struct personal_node *personal) {
     
     if(strcmp(personal->persn_info->network, "") == 0){        
-        personal = reset_personal(personal);
+        //personal = reset_personal(personal);
+        printf("Error in leave command: You are not inside a network\n");
         return 1;
     }
     

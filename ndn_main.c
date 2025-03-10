@@ -356,28 +356,28 @@ int main(int argc, char **argv){
         for (fd_itr = 0; fd_itr < my_node->max_fd + 1; fd_itr++) {
 
             if (FD_ISSET(fd_itr, &my_node->rdy_scks)) {
-                if (fd_itr == my_node->server_fd && strcmp(my_node->persn_info->network, "") != 0) {
-                    srv_addrlen = sizeof(srv_addr);
-                    if((new_fd = accept(my_node->server_fd, &srv_addr, &srv_addrlen)) == -1){
-                        printf("Error in accept(). Request rejected\n");
-                        return 1;
-                    }
-                    
-                    FD_SET(new_fd, &my_node->crr_scks);
-                    if (new_fd > my_node->max_fd) my_node->max_fd = new_fd;
-                    
-                }
-                else if (fd_itr == STDIN_FILENO) {
+                
+                if (fd_itr == STDIN_FILENO) {
                     memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'                                         
                     fgets(buffer, MAX_MSG_LENGTH-1, stdin);
                     printf("\n_________________________________________________________________\n");
                     printf("Handling your command...");
                     printf("\n_________________________________________________________________\n\n");
 
-                    select_cmd(my_node, buffer); 
-                    
-
+                    select_cmd(my_node, buffer);                     
                 }
+                else if (fd_itr == my_node->server_fd && strcmp(my_node->persn_info->network, "") != 0) { // atividade no servidor e estou na rede
+                    srv_addrlen = sizeof(srv_addr);
+                    if((new_fd = accept(my_node->server_fd, &srv_addr, &srv_addrlen)) == -1){
+                        printf("Error in accept(). Request rejected\n");
+                        //return 1;
+                    }
+                    
+                    FD_SET(new_fd, &my_node->crr_scks);
+                    if (new_fd > my_node->max_fd) my_node->max_fd = new_fd;
+                    
+                }
+                
                 else {
                     memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'
                     ptr_bffr = buffer;
@@ -391,7 +391,7 @@ int main(int argc, char **argv){
 
                     if (nread == -1) {
                         printf("Error in read: %s\n", strerror(errno));
-                        return 1;
+                        //return 1;
                     }
 
                     else if (nread == 0) {  //the fd is disconnected
