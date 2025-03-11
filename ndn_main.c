@@ -29,6 +29,8 @@
 // project libraries
 #include "ndn_node.h"
 #include "ndn_commands.h"
+#include "ndn_messages.h"
+#include "ndn_interestTable.h"
 #include "ndn_queue.h"
 
 
@@ -268,9 +270,7 @@ int main(int argc, char **argv){
     struct addrinfo *srv_result;  // list of address structures
     struct addrinfo srv_criteria; // necessary criteria to select the address structures from the list
     struct sockaddr srv_addr;     // the IPv4 address
-
-    struct timeval timeout;      // structure to set timeout value
-    struct timeval *ptimeout;    // pointer to timeval struct
+    
     int fd_itr = 0;              // an iterator to go through the FD set
     ssize_t nread;               // number of bytes read from a read operation
     ssize_t nleft;               // number of bytes left to fill the buffer capacity
@@ -287,8 +287,10 @@ int main(int argc, char **argv){
     my_node->server_fd = socket(AF_INET, SOCK_STREAM, 0); // personal server socket for the intern nodes
     if (my_node->server_fd < 0) {
         printf("Error in socket()\n");
-        return ++success_flag;
-        
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;        
     }
 
     my_node->max_fd = my_node->server_fd;
@@ -303,7 +305,10 @@ int main(int argc, char **argv){
     errflag = getaddrinfo(NULL, my_node->persn_info->tcp_port, &srv_criteria, &srv_result);
     if (errflag != 0) {
         printf("Error in getaddrinfo()\n");
-        return ++success_flag;
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;
     }
 
     // bind the address in "srv_result" to the personal socket
@@ -311,7 +316,10 @@ int main(int argc, char **argv){
     errflag = bind(my_node->server_fd, srv_result->ai_addr, srv_result->ai_addrlen);
     if (errflag == -1) {
         printf("Error in bind()\n");
-        return ++success_flag;
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;
     }
 
     freeaddrinfo(srv_result);
@@ -320,7 +328,10 @@ int main(int argc, char **argv){
     errflag = listen(my_node->server_fd, MAX_QUEUE_LENGTH_TCP); // the second argument refers to the number of pending connections allowed in the queue
     if (errflag == -1) {
         printf("Error in listen()\n");
-        return ++success_flag;
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;
     }
 
     FD_ZERO(&my_node->crr_scks);              // Set set of FD's to zero
@@ -328,10 +339,6 @@ int main(int argc, char **argv){
     FD_SET(my_node->server_fd, &my_node->crr_scks);           // add server socket to FD set
 
     // Infinite cycle where the communications happen
-
-    ptimeout = NULL;    //select waits for a indeterminate amount of time
-
-    
 
     while (1) {
     
@@ -353,7 +360,7 @@ int main(int argc, char **argv){
             free(my_node->internals_array);
             free_contact(my_node->persn_info);
 
-            if(my_node->contents != NULL){
+            if(my_node->queue_ptr != NULL){
             
                 objectQueue_t *queue_ptr; // pointer to go through the list
                 objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
@@ -391,6 +398,7 @@ int main(int argc, char **argv){
 
                 // accept a connection, if you can
                 else if (fd_itr == my_node->server_fd && strcmp(my_node->persn_info->network, "") != 0) { // atividade no servidor e estou na rede
+                    
                     srv_addrlen = sizeof(srv_addr);
                     if((new_fd = accept(my_node->server_fd, &srv_addr, &srv_addrlen)) == -1){
                         printf("Error in accept(). Request rejected\n");

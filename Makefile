@@ -25,7 +25,7 @@ all: ndn
 ndn: ${OBJFILES}
 	${CC} ${CFLAGS} -o ${APPNAME} ${OBJFILES}
 
-${OBJDIR}ndn_main.o: ${SRCDIR}ndn_main.c ${SRCDIR}ndn_node.h ${SRCDIR}ndn_commands.h ${SRCDIR}ndn_messages.h ${SRCDIR}ndn_queue.h
+${OBJDIR}ndn_main.o: ${SRCDIR}ndn_main.c ${SRCDIR}ndn_node.h ${SRCDIR}ndn_commands.h ${SRCDIR}ndn_messages.h ${SRCDIR}ndn_queue.h ${SRCDIR}ndn_interestTable.h
 	${CC} ${CFLAGS} -c ${SRCDIR}ndn_main.c -o ${OBJDIR}ndn_main.o
 
 ${OBJDIR}ndn_node.o: ${SRCDIR}g23funcs.c ${SRCDIR}g23funcs.h ${SRCDIR}g23tcp_udp.h  # check ndn_node dependencies
@@ -38,6 +38,9 @@ ${OBJDIR}ndn_messages.o: ${SRCDIR}g23tcp_udp.c ${SRCDIR}g23tcp_udp.h ${SRCDIR}g2
 	${CC} ${CFLAGS} -c ${SRCDIR}g23tcp_udp.c -o ${OBJDIR}g23tcp_udp.o
 
 ${OBJDIR}ndn_queue.o: ${SRCDIR}g23tcp_udp.c ${SRCDIR}g23tcp_udp.h ${SRCDIR}g23funcs.h # check ndn_queue dependencies
+	${CC} ${CFLAGS} -c ${SRCDIR}g23tcp_udp.c -o ${OBJDIR}g23tcp_udp.o
+
+${OBJDIR}ndn_interestTable.o: ${SRCDIR}g23tcp_udp.c ${SRCDIR}g23tcp_udp.h ${SRCDIR}g23funcs.h # check ndn_interestTable dependencies
 	${CC} ${CFLAGS} -c ${SRCDIR}g23tcp_udp.c -o ${OBJDIR}g23tcp_udp.o
 	
 clean:	

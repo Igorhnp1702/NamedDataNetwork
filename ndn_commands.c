@@ -9,10 +9,25 @@
  * Description: source code for the commands
  ***********************************************************************************************/
 
-#include <arpa/inet.h>
-#include "ndn_commands.h"
-#include "ndn_node.h"
+ #define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
 
+// general purpose libraries
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+// networking libraries
+#include <netdb.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <signal.h>
+
+// project libraries
+#include "ndn_commands.h"
+#include "ndn_messages.h"
+#include "ndn_node.h"
 
 /*------------------------------------------Argument checking functions------------------------------------------*/
 
@@ -140,7 +155,7 @@ void select_cmd(struct personal_node *personal, char *input){
         if(sscanf(input, "%*s %s", content) == 1){
             
             printf("Executing %s...\n\n", create_str);
-            personal->contents = create(personal->contents, content); // create and store a content inside the personal node           
+            personal->queue_ptr = create(personal->queue_ptr, content); // create and store a content inside the personal node           
             return; 
         }
         else{
@@ -154,7 +169,7 @@ void select_cmd(struct personal_node *personal, char *input){
         if(sscanf(input, "%*s %s", content) == 1){
             
             printf("Executing %s...\n\n", delete_str);
-            personal->contents = delete(personal->contents, content); // delete a content inside the personal node
+            personal->queue_ptr = delete(personal->queue_ptr, content); // delete a content inside the personal node
             return;            
         }
         else{
@@ -195,14 +210,14 @@ void select_cmd(struct personal_node *personal, char *input){
 
         if(strcmp(cmd_str2, names_str) == 0){
             printf("Executing %s %s...\n\n", show_str, names_str);
-            show_names(&personal->contents); // show contents of the personal node
+            show_names(&personal->queue_ptr); // show names of the personal node
             return;
         }
 
         if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
 
             printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_names(&personal->contents); // show contents of the personal node
+            show_names(&personal->queue_ptr); // show names of the personal node
             return;
         }
         
@@ -211,7 +226,7 @@ void select_cmd(struct personal_node *personal, char *input){
     else if(strcmp(cmd_str1, show_names_str_short) == 0){
         
         printf("Executing %s...\n\n", cmd_str1);
-        show_names(&personal->contents); // show contents of the personal node
+        show_names(&personal->queue_ptr); // show names of the personal node
         return;
 
     }//else if sn
@@ -257,11 +272,11 @@ void select_cmd(struct personal_node *personal, char *input){
         free(personal->internals_array);
         free_contact(personal->persn_info);
 
-        if(personal->contents != NULL){
+        if(personal->queue_ptr != NULL){
         
             objectQueue_t *queue_ptr; // pointer to go through the list
             objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
-            queue_ptr = personal->contents;
+            queue_ptr = personal->queue_ptr;
             
             while(queue_ptr != NULL){
 
@@ -300,6 +315,8 @@ int join(struct personal_node *personal, char *net) {
 
     int success_flag = 0;
 
+    // check the arguments
+
     if(strcmp(personal->persn_info->network, "") != 0){
         printf("Error in join: The node is already inside a network. Command ignored\n");
         return ++success_flag;
@@ -309,89 +326,79 @@ int join(struct personal_node *personal, char *net) {
         printf("Please insert a three digit network from 000 to 999\n");
         return ++success_flag;
     }
-
-    char msg[MAX_MSG_LENGTH];      memset(msg, 0, sizeof(msg));
-    udp_flag++; 
     
-    struct addrinfo srv_criteria, *srv_result;
-    int fd, errflag;
-    ssize_t cnt;
-    struct sockaddr_in addr_conf;
-    socklen_t addrlen_conf;
-    char *buffer = (char*)calloc(MAX_NODESLIST, sizeof(char));
+    // inquire the server about the nodes in the network
+            
+    char *nodeslist = server_inquiry(personal->udp_address, personal->udp_port, net);
 
-    fd = socket(AF_INET, SOCK_DGRAM, 0) ;
-    if(fd == -1) return NULL;
+    if(nodeslist == NULL){
+        printf("Error in join: failed to inquire the server\n\n");
+        return ++success_flag;
+    } 
+    const char delim[2] = "\n";
+    char *token;
+    int n_nodes = 0, node_counter = 0, random_number;
+    
+    // print the response from the node server, line by line, and count the amount of nodes
 
-    memset(&srv_criteria, 0, sizeof(srv_criteria));
-    srv_criteria.ai_family = AF_INET;
-    srv_criteria.ai_socktype = SOCK_DGRAM;
+    printf("Response from the node server:\n\n");
 
-    errflag = getaddrinfo(personal->udp_address, personal->udp_port, &srv_criteria, &srv_result);
-    if(errflag != 0) return NULL;
-
-    cnt = sendto(fd, msg, strlen(msg), 0, srv_result->ai_addr, srv_result->ai_addrlen);
-    if(cnt == -1) return NULL;
-
-    freeaddrinfo(srv_result);
-
-    addrlen_conf = sizeof(struct sockaddr_in);
-    cnt = recvfrom(fd, buffer, MAX_NODESLIST, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
-    if(cnt == -1) return -1;
-    buffer[cnt] = '\0';
-
-    if (strcmp(inet_ntoa(addr_conf.sin_addr), personal->udp_address) != 0) { //Verification
-        strcpy(buffer, "0");
+    token = strtok(nodeslist, delim);
+    printf("%s\n\n", token); // first line (nodeslist net\n)
+    while (token != NULL) {                                         
+        
+        token = strtok(NULL, delim);
+        printf("%s\n", token);
+        n_nodes++;
     }
 
-    close(fd);
-    token = strtok(buffer, delim);
-            while (token != NULL) {             //Go through all the lines and populate an array with the available ID's
-                if (flag > 0) {                                             //Iterating line by line, descarding the first one
-                    sscanf(token, "%s %s %s", ls_id, ls_ip, ls_tcp);        //ls_id, ls_ip and ls_tcp are the contacts from the node in that line
-                    free_id[atoi(ls_id)] = 1;                               //available ID's array
-                }
-                token = strtok(NULL, delim);
-                flag = 1;
-            }
+    printf("%d nodes reported in the network\n\n", n_nodes);
 
-            if (ls_id[0] == '\0') {
-                strcpy(ls_id, slf_node->persn_info->node_id);
-                strcpy(ls_ip, slf_node->persn_info->node_addr);
-                strcpy(ls_tcp, slf_node->persn_info->tcp_port);
-            }
-
-            if (free_id[atoi(slf_node->persn_info->node_id)] != 0) {     //If the chosen ID is available, this if statmnent is skipped   
-                for (cnt = 0, flag = 0; cnt < 99 && flag == 0; cnt++) {  //If the chosen ID isn't available, the first one available in free_id will be chosen   
-                    if (free_id[cnt] == 0) {
-                        sprintf(aux_id_str, "%02d", cnt);
-                        strcpy(slf_node->persn_info->node_id, aux_id_str);
-                        flag = 1;
-                        printf("The chosen ID is not available!\nThe assigned ID is: %s\n", slf_node->persn_info->node_id);
-                    }
-                }
-                if (flag == 0) {                                       
-                    printf("Error in send_udp: The network is full!\n");
-                    return ++success_flag;
-                }
-            }
-            //djoin, TCP connection with neighbor
-
-            memset(slf_node->persn_info->network, 0, 4*sizeof(char));
-            if(djoin(slf_node, network, slf_node->persn_info->node_id, ls_id, ls_ip, ls_tcp) == 1) {
-                printf("send_udp->join->djoin: Failed!\n");
-                return ++success_flag;
-            }
-            //register node in node server
-            if (rcv_msg != NULL) {
-                free(rcv_msg);
-            }
+    if(n_nodes > 0){ // if the network is not empty, pick a node from the list to connect to
     
-    djoin();
-    //either print the successfull registration, or an error message
+        random_number = num_gen(n_nodes);
 
-    sprintf(msg, "%s %s\n", nodes_str, net);
-    success_flag = send_udp(personal, msg);
+        printf("The node in the no. %d position was picked for connection.\n\n", random_number);
+        printf("Preparing to connect...\n\n");
+
+        token = strtok(nodeslist, delim);
+        printf("%s\n\n", token); // first line (nodeslist net\n)
+        while (token != NULL) {                                         
+            
+            token = strtok(NULL, delim);
+            node_counter++;
+            if(node_counter == random_number){
+                sscanf(token, "%s %s", picked_ip, picked_tcp);
+                break;
+            }        
+        }
+
+        // try to connect
+
+        if(djoin(personal, net, picked_ip, picked_tcp) == 1) {
+            printf("Error in join: Failed to connect to a node in the desired network\n");
+            return ++success_flag;
+        }
+    }
+    else{ // empty network, 
+        
+        memset(personal->persn_info->network, 0, 4*sizeof(char));
+        if(djoin(personal, net, "0.0.0.0", ls_tcp) == 1) {
+            printf("Error in join: Failed to enter the network\n");
+            return ++success_flag;
+        }
+    }
+
+    // try to register the node
+
+    if(!node_reg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, personal->persn_info->tcp_port, net)){
+        
+        printf("Error in join: Failed to register the node\n");
+        node_unreg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, personal->persn_info->tcp_port, net);
+        return ++success_flag;
+    } 
+ 
+    udp_flag++;
     return success_flag;
 
 }//join
@@ -493,7 +500,7 @@ objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100
         
     queue_ptr->next = new_node;
     printf("\n%s was inserted in the list\n\n", name);
-    return contents;
+    return queue_ptr;
 }//create
 
 
@@ -737,13 +744,13 @@ int show_interest_table (struct personal_node *personal) {
     return success_flag;
 }//show_interest_table  
 
-objectQueue_t *clear_names(objectQueue_t *contents){
+objectQueue_t *clear_names(objectQueue_t *queue_ptr){
 
     int cleared_names = 0;  //number of names cleared
 
-    if(contents == NULL){
-        printf("No contents to clear in this node\n");
-        return contents;
+    if(queue_ptr == NULL){
+        printf("No names to clear in this node\n");
+        return queue_ptr;
     }
     printf("\nClearing names...\n");
 

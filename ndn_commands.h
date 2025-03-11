@@ -278,6 +278,65 @@ int leave(struct personal_node *personal);
  **************************************************************/
 void help_menu(void);
 
+/***************************************************************************
+ * check_name()
+ *
+ * Description:
+ *
+ *  -Check if the name passed in the command is valid
+ *
+ *  Arguments:
+ *
+ *  -name = a pointer to a string containing the name
+ *
+ *  Return: 0 on success; 1 on failure
+ ****************************************************************************/
+int check_name(char *name);
+
+/**************************************************************************
+ * check_net()
+ * 
+ * Description:
+ * 
+ *  -Check if the network passed in the command is valid;
+ * 
+ *  Arguments:
+ * 
+ *  -name = a pointer to a string containing the network;
+ *
+ *  Return: 0 on success; 1 on failure
+ ****************************************************************************/
+ int check_net(char *net);
+
+ /**************************************************************************
+ * check_ports()
+ * 
+ * Description:
+ * 
+ *  -Check if the TCP port passed in the command is valid;
+ * 
+ *  Arguments:
+ * 
+ *  -name = a pointer to a string containing the port;
+ *
+ *  Return: 0 on success; 1 on failure
+ ****************************************************************************/
+ int check_ports(char *port_str);
+                        
+/******************************************************************
+ * personal_init()
+ *
+ *  Description:
+ *
+ *  -Allocate the memory for the personal node and set it to zero;
+ *
+ *  Arguments:
+ *
+ *  -personal = A pointer to the personal node set to NULL;
+ *
+ *  Return: A pointer to the initialized personal node;
+ *****************************************************************/
+
 
 
 int is_valid_ip(const char *ip);
