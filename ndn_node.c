@@ -96,17 +96,19 @@ void free_contact(nodeinfo_t *contact){
 struct personal_node *reset_personal(struct personal_node *personal){
    
     int iter = 0;
+    nodesLinkedlist_t *aux1, *aux2;
 
     /* clear the memory for the internal nodes */
 
-    for(iter = 0; iter < MAX_INTERNALS; iter++){
-
-        if(personal->internals_array[iter] != NULL){
-            free_contact(personal->internals_array[iter]);
-            personal->internals_array[iter] = NULL;
-        } 
+    aux1 = personal->internals_list;
+    
+    while(aux1 != NULL){
+        aux2 = aux1;
+        aux1 = aux1->next;
+        free_contact(aux2->node);
+        free(aux2);
     }
-
+    
     /*clear extern and backup nodes*/
     if (personal->extern_node != NULL){        
         free_contact(personal->extern_node);
