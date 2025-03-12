@@ -19,7 +19,7 @@
  #define MAX_NODESLIST 6000               // size of the buffer for the NODESLIST response
  #define MAX_MSG_LENGTH 200               // size of the buffer for the messages (incoming/outgoing)
  #define MAX_USR_CMD_LENGTH 150           // size of the buffer for the commands
- #define MAX_CONTENT_NAME 101             // size of the buffer for the contents (max chars = 100 + null terminator)
+ #define MAX_OBJECT_NAME 101             // size of the buffer for the contents (max chars = 100 + null terminator)
  #define MAX_ADDRESS_SIZE 50              // size of the buffer for non_determinístic ip address
  #define MAX_NET_CHARS 4                  // number of chars required for the network number (with '\0')
  #define MAX_TCP_UDP_CHARS 6              // number of chars required for the tcp/udp ports(with '\0')
@@ -41,16 +41,22 @@
 #define safe_str "SAFE"         // TCP msg SAFE
 
 // interactions with other nodes to exchange objects
-#define query_str "INTEREST"    // TCP msg INTEREST
+#define interest_str "INTEREST"    // TCP msg INTEREST
 #define object_str "OBJECT"     // TCP msg OBJECT
 #define noobject_str "NOOBJECT" // TCP msg NOOBJECT
 
 #include "ndn_node.h"
 
+int udp_flag = 0;
+
 char *server_inquiry(char *server_IP, char *server_UDP, char *msg);// request the list of nodes in the network
 
-int node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net);
+char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net);
 
-int node_unreg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net);
+char *node_unreg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net);
+
+char* send_entry(int *fd, char *node_IP, char *node_TCP);
+
+char *send_safe(int fd, char *ext_ip, char *ext_tcp);
 
 #endif

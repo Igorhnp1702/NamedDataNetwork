@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 // networking libraries
 #include <netdb.h>
@@ -150,47 +151,47 @@ void select_cmd(struct personal_node *personal, char *input){
         } 
     }//else if
 
-    else if(strcmp(cmd_str1, create_str) == 0 || strcmp(cmd_str1, create_str_short) == 0){
+    // else if(strcmp(cmd_str1, create_str) == 0 || strcmp(cmd_str1, create_str_short) == 0){
 
-        if(sscanf(input, "%*s %s", content) == 1){
+    //     if(sscanf(input, "%*s %s", content) == 1){
             
-            printf("Executing %s...\n\n", create_str);
-            personal->queue_ptr = create(personal->queue_ptr, content); // create and store a content inside the personal node           
-            return; 
-        }
-        else{
-            printf("Failed to read arguments of %s\n", create_str); 
-            return;
-        } 
-    }//else if
+    //         printf("Executing %s...\n\n", create_str);
+    //         personal->queue_ptr = create(personal->queue_ptr, content); // create and store a content inside the personal node           
+    //         return; 
+    //     }
+    //     else{
+    //         printf("Failed to read arguments of %s\n", create_str); 
+    //         return;
+    //     } 
+    // }//else if
 
-    else if(strcmp(cmd_str1, delete_str) == 0 || strcmp(cmd_str1, delete_str_short) == 0){
+    // else if(strcmp(cmd_str1, delete_str) == 0 || strcmp(cmd_str1, delete_str_short) == 0){
 
-        if(sscanf(input, "%*s %s", content) == 1){
+    //     if(sscanf(input, "%*s %s", content) == 1){
             
-            printf("Executing %s...\n\n", delete_str);
-            personal->queue_ptr = delete(personal->queue_ptr, content); // delete a content inside the personal node
-            return;            
-        }
-        else{
-            printf("Failed to read arguments of %s\n", delete_str); 
-            return;
-        } 
-    }//else if
+    //         printf("Executing %s...\n\n", delete_str);
+    //         personal->queue_ptr = delete(personal->queue_ptr, content); // delete a content inside the personal node
+    //         return;            
+    //     }
+    //     else{
+    //         printf("Failed to read arguments of %s\n", delete_str); 
+    //         return;
+    //     } 
+    // }//else if
 
-    else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){
+    // else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){
         
-        if(sscanf(input, "%*s %s", content) == 1){
+    //     if(sscanf(input, "%*s %s", content) == 1){
             
-            printf("Executing %s...\n\n", retrieve_str);
-            retrieve(personal, content); // search and copy a content from another node        
-            return; 
-        }
-        else{
-            printf("Failed to read arguments of %s\n", retrieve_str); 
-            return;
-        } 
-    }//else if
+    //         printf("Executing %s...\n\n", retrieve_str);
+    //         retrieve(personal, content); // search and copy a content from another node        
+    //         return; 
+    //     }
+    //     else{
+    //         printf("Failed to read arguments of %s\n", retrieve_str); 
+    //         return;
+    //     } 
+    // }//else if
 
     else if(strcmp(cmd_str1, show_topology_str_short) == 0){
         
@@ -208,46 +209,46 @@ void select_cmd(struct personal_node *personal, char *input){
             return;
         }
 
-        if(strcmp(cmd_str2, names_str) == 0){
-            printf("Executing %s %s...\n\n", show_str, names_str);
-            show_names(&personal->queue_ptr); // show names of the personal node
-            return;
-        }
+        // if(strcmp(cmd_str2, names_str) == 0){
+        //     printf("Executing %s %s...\n\n", show_str, names_str);
+        //     show_names(&personal->queue_ptr); // show names of the personal node
+        //     return;
+        // }
 
-        if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
+        // if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
 
-            printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_names(&personal->queue_ptr); // show names of the personal node
-            return;
-        }
+        //     printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
+        //     show_names(&personal->queue_ptr); // show names of the personal node
+        //     return;
+        // }
         
     }// else if
 
-    else if(strcmp(cmd_str1, show_names_str_short) == 0){
+    // else if(strcmp(cmd_str1, show_names_str_short) == 0){
         
-        printf("Executing %s...\n\n", cmd_str1);
-        show_names(&personal->queue_ptr); // show names of the personal node
-        return;
+    //     printf("Executing %s...\n\n", cmd_str1);
+    //     show_names(&personal->queue_ptr); // show names of the personal node
+    //     return;
 
-    }//else if sn
+    // }//else if sn
 
-    else if(strcmp(cmd_str1, clear_names_str_short) == 0){
+    // else if(strcmp(cmd_str1, clear_names_str_short) == 0){
 
-        printf("Executing %s...\n\n", cmd_str1);
-        personal->contents = clear_names(personal->contents);  // clear the contents table of the personal node            
-        return;
+    //     printf("Executing %s...\n\n", cmd_str1);
+    //     personal->contents = clear_names(personal->contents);  // clear the contents table of the personal node            
+    //     return;
 
-    }// else if cn
+    // }// else if cn
 
-    else if(strcmp(cmd_str1, show_interest_table_str_short) == 0){
+    // else if(strcmp(cmd_str1, show_interest_table_str_short) == 0){
 
-        if(strcmp(personal->persn_info->network, "") == 0)
+    //     if(strcmp(personal->persn_info->network, "") == 0)
         
-        printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-        show_routing(personal->route_tab); // show routing table of the personal node
-        return;
+    //     printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
+    //     show_routing(personal->route_tab); // show routing table of the personal node
+    //     return;
 
-    }//else if si
+    // }//else if si
     
     else if(strcmp(cmd_str1, leave_str) == 0 || strcmp(cmd_str1, leave_str_short) == 0){
 
@@ -272,21 +273,21 @@ void select_cmd(struct personal_node *personal, char *input){
         free(personal->internals_array);
         free_contact(personal->persn_info);
 
-        if(personal->queue_ptr != NULL){
+        // if(personal->queue_ptr != NULL){
         
-            objectQueue_t *queue_ptr; // pointer to go through the list
-            objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
-            queue_ptr = personal->queue_ptr;
+        //     objectQueue_t *queue_ptr; // pointer to go through the list
+        //     objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
+        //     queue_ptr = personal->queue_ptr;
             
-            while(queue_ptr != NULL){
+        //     while(queue_ptr != NULL){
 
-                aux = queue_ptr;
-                queue_ptr = queue_ptr->next;
-                free(aux->string);
-                free(aux);
+        //         aux = queue_ptr;
+        //         queue_ptr = queue_ptr->next;
+        //         free(aux->string);
+        //         free(aux);
                 
-            }                            
-        }
+        //     }                            
+        // }
             
         free(personal);
         exit(0);
@@ -314,6 +315,8 @@ void select_cmd(struct personal_node *personal, char *input){
 int join(struct personal_node *personal, char *net) { 
 
     int success_flag = 0;
+    char picked_ip[51];
+    char picked_tcp[6];
 
     // check the arguments
 
@@ -334,7 +337,8 @@ int join(struct personal_node *personal, char *net) {
     if(nodeslist == NULL){
         printf("Error in join: failed to inquire the server\n\n");
         return ++success_flag;
-    } 
+    }
+    udp_flag++; 
     const char delim[2] = "\n";
     char *token;
     int n_nodes = 0, node_counter = 0, random_number;
@@ -383,7 +387,7 @@ int join(struct personal_node *personal, char *net) {
     else{ // empty network, 
         
         memset(personal->persn_info->network, 0, 4*sizeof(char));
-        if(djoin(personal, net, "0.0.0.0", ls_tcp) == 1) {
+        if(djoin(personal, net, "0.0.0.0", personal->persn_info->tcp_port) == 1) {
             printf("Error in join: Failed to enter the network\n");
             return ++success_flag;
         }
@@ -397,8 +401,7 @@ int join(struct personal_node *personal, char *net) {
         node_unreg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, personal->persn_info->tcp_port, net);
         return ++success_flag;
     } 
- 
-    udp_flag++;
+     
     return success_flag;
 
 }//join
@@ -406,7 +409,7 @@ int join(struct personal_node *personal, char *net) {
 
 int djoin(struct personal_node *personal, char *net, char *connectIP, char *connectTCP){
 
-    char msg[MAX_MSG_LENGTH];   memset(msg, 0, sizeof(msg));
+    char buffer[MAX_MSG_LENGTH];   memset(buffer, 0, sizeof(buffer));
     int success_flag = 0;
 
     if(strcmp(personal->persn_info->network, "") != 0){
@@ -427,33 +430,125 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
             return ++success_flag;
         }
     }
+
+    int errflag;                  // flag to check for errors in function calls    
+    struct addrinfo *srv_result;  // list of address structures
+    struct addrinfo srv_criteria; // necessary criteria to select the address structures from the list
+    ssize_t nread;               // number of bytes read from a read operation
+    ssize_t nleft;               // number of bytes left to fill the buffer capacity
+    char *scan_ptr;
+    nleft = MAX_MSG_LENGTH;
+
+    struct timeval timeout;
+    timeout.tv_sec = 5;  // 5-second timeout
+    timeout.tv_usec = 0;
     
+    personal->server_fd = socket(AF_INET, SOCK_STREAM, 0); // personal server socket for the intern nodes
+    if (personal->server_fd < 0) {
+        printf("Error in socket()\n");
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;        
+    }
+    setsockopt(personal->server_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+
+    personal->max_fd = personal->server_fd;
+
+    memset(&srv_criteria, 0, sizeof(srv_criteria)); // set all bytes inside "criteria" to zero
+    srv_criteria.ai_family = AF_INET;               // family of IPv4 addresses
+    srv_criteria.ai_socktype = SOCK_STREAM;         // TCP socket
+    srv_criteria.ai_flags = AI_PASSIVE;             // passive socket that waits for requests
+
+    // pass the information in "criteria" to "srv_result" 
+
+    errflag = getaddrinfo(NULL, personal->persn_info->tcp_port, &srv_criteria, &srv_result);
+    if (errflag != 0) {
+        printf("Error in getaddrinfo()\n");
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;
+    }
+
+    // bind the address in "srv_result" to the personal socket
+
+    errflag = bind(personal->server_fd, srv_result->ai_addr, srv_result->ai_addrlen);
+    if (errflag == -1) {
+        printf("Error in bind()\n");
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;
+    }
+
+    freeaddrinfo(srv_result);
+    // Set the personal socket to listen to requests. Only 6 requests at a time
+
+    errflag = listen(personal->server_fd, MAX_QUEUE_LENGTH_TCP); // the second argument refers to the number of pending connections allowed in the queue
+    if (errflag == -1) {
+        printf("Error in listen()\n");
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        // free and close everything
+        return 1;
+    }
+
     strcpy(personal->persn_info->network, net);
 
     if (strcmp(connectIP, "0.0.0.0") == 0) {  //First node of the network
-        personal->anchorflag = 1; //!confirmar
-        personal->extern_node = contact_init(personal->extern_node);
-        contact_copy(personal->extern_node, personal->persn_info);
+        personal->anchorflag = 1;             //!confirmar
+        personal->extern_node = contact_init(personal->extern_node);        
         personal->backup_node = contact_init(personal->backup_node);
-        contact_copy(personal->backup_node, personal->persn_info);
+        
     }
     else{
+                
+        //Sends ENTRY message
+        if(send_entry(personal->client_fd, connectIP, connectTCP) == NULL){
+            printf("Error in direct join: Failed to join the network\n");
+            // unregister from the node server, if necessary
+            // clear all data
+            //return 1;
+            return 1;
+        }
+        else{
+            printf("\nENTRY message delivered to %s | %s\n", connectIP, connectTCP);
+            printf("Updating external neighbor\n");
+        }
+
         personal->extern_node = contact_init(personal->extern_node);        
         strcpy(personal->extern_node->network, net);
         strcpy(personal->extern_node->tcp_port, connectTCP);
         strcpy(personal->extern_node->node_addr, connectIP);
-        personal->backup_node = contact_init(personal->backup_node);
 
-        //ENTRY message
-        sprintf(msg, "%s %s %s\n", entry_str, personal->persn_info->node_addr, personal->persn_info->tcp_port);
-        //Sends ENTRY message , receives SAFE response and updates backup node
-        if(send_tcp(personal, personal->extern_node, msg)){
-            printf("Error in direct join: Failed to join the network\n");
-            return 1;
+        //Receives SAFE message
+
+        personal->backup_node = contact_init(personal->backup_node);
+        
+        errno = 0;
+        scan_ptr = buffer;
+
+        while (((nread = read(personal->client_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
+            scan_ptr += nread - 1;
+            nleft = MAX_MSG_LENGTH;
+            if (*(scan_ptr) == '\n') break;
         }
+
+        if (nread == -1) {
+            printf("Error in djoin: read returned %s while reading SAFE message. The message was incomplete.\n", strerror(errno));
+            // unregister from the node server, if necessary
+            // clear all data
+            //return 1;
+        }
+        
+        sscanf(buffer, "%*s %s %s", personal->backup_node->node_addr, personal->backup_node->tcp_port);
+
         // check if it's an anchor
         if (strcmp(personal->persn_info->node_addr, personal->backup_node->node_addr) == 0 && 
-        strcmp(personal->persn_info->tcp_port, personal->backup_node->tcp_port) == 0) {
+            strcmp(personal->persn_info->tcp_port, personal->backup_node->tcp_port) == 0) {
+            
             personal->anchorflag = 1;
         }
     }
@@ -469,161 +564,161 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
 }//djoin
 
 
-objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100, alphanumeric chars only
+// objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100, alphanumeric chars only
 
-    if(check_name(name) == 1){
-        printf("Error in create: invalid name\n");
-        return contents;
-    }
+//     if(check_name(name) == 1){
+//         printf("Error in create: invalid name\n");
+//         return contents;
+//     }
     
-    int name_size = strlen(name) + 1; 
-    queueBlock_t *new_node = (queueBlock_t*)calloc(1, sizeof(queueBlock_t));
-    new_node->name = (char*)calloc(name_size, sizeof(char));
-    strcpy(new_node->name, name);
+//     int name_size = strlen(name) + 1; 
+//     queueBlock_t *new_node = (queueBlock_t*)calloc(1, sizeof(queueBlock_t));
+//     new_node->name = (char*)calloc(name_size, sizeof(char));
+//     strcpy(new_node->name, name);
 
-    if(queue_ptr == NULL){ // if true, we are creating the first element of the list
+//     if(queue_ptr == NULL){ // if true, we are creating the first element of the list
 
-        queue_ptr = new_node;
-        contents->next = NULL;
+//         queue_ptr = new_node;
+//         contents->next = NULL;
         
-        printf("Content created at the beginning of the list: %s\n", name);
-        return contents;
-    }
+//         printf("Content created at the beginning of the list: %s\n", name);
+//         return contents;
+//     }
 
-    objectQueue_t *queue_ptr; // pointer to go through the list
+//     objectQueue_t *queue_ptr; // pointer to go through the list
     
-    queue_ptr = contents;
+//     queue_ptr = contents;
 
-    while(queue_ptr->next != NULL){ //reach the last element of the list
-        queue_ptr = queue_ptr->next;		
-    }
+//     while(queue_ptr->next != NULL){ //reach the last element of the list
+//         queue_ptr = queue_ptr->next;		
+//     }
         
-    queue_ptr->next = new_node;
-    printf("\n%s was inserted in the list\n\n", name);
-    return queue_ptr;
-}//create
+//     queue_ptr->next = new_node;
+//     printf("\n%s was inserted in the list\n\n", name);
+//     return queue_ptr;
+// }//create
 
 
-objectQueue_t *delete(objectQueue_t *contents, char *name) {
+// objectQueue_t *delete(objectQueue_t *contents, char *name) {
     
-    if(check_name(name) == 1){
-        printf("Error in delete: Invalid name\n");
-        return contents;
-    }
+//     if(check_name(name) == 1){
+//         printf("Error in delete: Invalid name\n");
+//         return contents;
+//     }
 
-    if(contents == NULL){
-        printf("Error in delete: No contents available\n");
-        return contents;
-    }
+//     if(contents == NULL){
+//         printf("Error in delete: No contents available\n");
+//         return contents;
+//     }
 
-    objectQueue_t *queue_ptr; // pointer to go through the list
-    objectQueue_t *aux; // auxiliary pointer to delete elements of the lists
-    queue_ptr = contents;
+//     objectQueue_t *queue_ptr; // pointer to go through the list
+//     objectQueue_t *aux; // auxiliary pointer to delete elements of the lists
+//     queue_ptr = contents;
 
-    if(strcmp(contents->string, name) == 0){ //delete at the head of the list
+//     if(strcmp(contents->string, name) == 0){ //delete at the head of the list
 
-        aux = contents;
-        contents = contents->next;
-        free(aux->string);
-        free(aux);
-        printf("%s was successfuly deleted\n", name);
-        if(contents == NULL){
-            printf("\nThe list of contents is now empty\n\n");
-        }		
-        return contents;
-    }
+//         aux = contents;
+//         contents = contents->next;
+//         free(aux->string);
+//         free(aux);
+//         printf("%s was successfuly deleted\n", name);
+//         if(contents == NULL){
+//             printf("\nThe list of contents is now empty\n\n");
+//         }		
+//         return contents;
+//     }
 
-    while(queue_ptr != NULL){
+//     while(queue_ptr != NULL){
 
-        if(queue_ptr->next == NULL && strcmp(queue_ptr->string, name) != 0){            
-            printf("Error in delete: The name was not found\n");
-            return contents;
-        }
+//         if(queue_ptr->next == NULL && strcmp(queue_ptr->string, name) != 0){            
+//             printf("Error in delete: The name was not found\n");
+//             return contents;
+//         }
         
-        else if(strcmp(queue_ptr->string, name) == 0){ 
+//         else if(strcmp(queue_ptr->string, name) == 0){ 
 
-            aux = queue_ptr;
-            queue_ptr = queue_ptr->next;
-            free(aux->string);
-            free(aux);
-            printf("The deletion of %s was successful\n", name);
-            if(queue_ptr == NULL){
-                printf("\nThe list of contents is now empty\n\n");
-            }
-            return contents;
-        }
+//             aux = queue_ptr;
+//             queue_ptr = queue_ptr->next;
+//             free(aux->string);
+//             free(aux);
+//             printf("The deletion of %s was successful\n", name);
+//             if(queue_ptr == NULL){
+//                 printf("\nThe list of contents is now empty\n\n");
+//             }
+//             return contents;
+//         }
         
-        else if(strcmp(queue_ptr->next->string, name) == 0){
+//         else if(strcmp(queue_ptr->next->string, name) == 0){
             
-            aux = queue_ptr->next;
-            queue_ptr->next = queue_ptr->next->next;
-            free(aux->string);
-            free(aux);
-            printf("The deletion of %s was successful\n", name);
-            return contents;
-        }
-        else queue_ptr = queue_ptr->next;
-    }    
-    return contents;
-}//delete
+//             aux = queue_ptr->next;
+//             queue_ptr->next = queue_ptr->next->next;
+//             free(aux->string);
+//             free(aux);
+//             printf("The deletion of %s was successful\n", name);
+//             return contents;
+//         }
+//         else queue_ptr = queue_ptr->next;
+//     }    
+//     return contents;
+// }//delete
 
 
-int retrieve(struct personal_node *personal, char *name){
+// int retrieve(struct personal_node *personal, char *name){
 
-    int success_flag = 0;
-    if(strcmp(personal->persn_info->network, "") == 0){
-        printf("Error in retrieve: You are not inside a network\n");
-        return ++success_flag;
-    }
+//     int success_flag = 0;
+//     if(strcmp(personal->persn_info->network, "") == 0){
+//         printf("Error in retrieve: You are not inside a network\n");
+//         return ++success_flag;
+//     }
     
-    /* check the expedition table */
+//     /* check the expedition table */
     
-    int search_id = atoi(dest_id);  //integer to search the table of intern neighbors
+//     int search_id = atoi(dest_id);  //integer to search the table of intern neighbors
     
-    int gateway = -1;                      //id of neighbor to send something to the destination
-    char retrieve_buffer[MAX_MSG_LENGTH];     //buffer for the "QUERY" message
+//     int gateway = -1;                      //id of neighbor to send something to the destination
+//     char retrieve_buffer[MAX_MSG_LENGTH];     //buffer for the "QUERY" message
     
-    memset(retrieve_buffer, 0, sizeof(retrieve_buffer));
+//     memset(retrieve_buffer, 0, sizeof(retrieve_buffer));
 
-    sprintf(retrieve_buffer,"RETRIEVE %s %s\n", name);    
+//     sprintf(retrieve_buffer,"RETRIEVE %s %s\n", name);    
 
-    if(personal->route_tab[search_id] == search_id){ // destination is equal to the neighbor, but what type of neighbor?
+//     if(personal->route_tab[search_id] == search_id){ // destination is equal to the neighbor, but what type of neighbor?
 
-        if(strcmp(personal->extern_node->node_id, dest_id) == 0 || strcmp(personal->backup_node->node_id, dest_id) == 0 ){ // extern/backup neighbor
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->extern_node, retrieve_buffer);                        
-        }
-        else{
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->internals_array[search_id], retrieve_buffer); // intern neighbor 
-        }                               
-    }
-    else if(personal->route_tab[search_id] != -1){ // destination is initialized and is different from the neighbor
+//         if(strcmp(personal->extern_node->node_id, dest_id) == 0 || strcmp(personal->backup_node->node_id, dest_id) == 0 ){ // extern/backup neighbor
+//             printf("Sending: %s\n", retrieve_buffer);
+//             send_tcp(personal, personal->extern_node, retrieve_buffer);                        
+//         }
+//         else{
+//             printf("Sending: %s\n", retrieve_buffer);
+//             send_tcp(personal, personal->internals_array[search_id], retrieve_buffer); // intern neighbor 
+//         }                               
+//     }
+//     else if(personal->route_tab[search_id] != -1){ // destination is initialized and is different from the neighbor
 
-        gateway = personal->route_tab[search_id];
-        if(gateway == atoi(personal->extern_node->node_id) || gateway == atoi(personal->backup_node->node_id)){
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->extern_node, retrieve_buffer);
-        }
-        else{
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->internals_array[gateway], retrieve_buffer);
-        }        
-    }
-    else{ //destination is not a neighbor and it is not initialized
-        printf("Sending: %s\n", retrieve_buffer);
-        send_tcp(personal, personal->extern_node, retrieve_buffer);
+//         gateway = personal->route_tab[search_id];
+//         if(gateway == atoi(personal->extern_node->node_id) || gateway == atoi(personal->backup_node->node_id)){
+//             printf("Sending: %s\n", retrieve_buffer);
+//             send_tcp(personal, personal->extern_node, retrieve_buffer);
+//         }
+//         else{
+//             printf("Sending: %s\n", retrieve_buffer);
+//             send_tcp(personal, personal->internals_array[gateway], retrieve_buffer);
+//         }        
+//     }
+//     else{ //destination is not a neighbor and it is not initialized
+//         printf("Sending: %s\n", retrieve_buffer);
+//         send_tcp(personal, personal->extern_node, retrieve_buffer);
 
-        for(int iter = 0; iter < MAX_INTERNALS; iter++){
+//         for(int iter = 0; iter < MAX_INTERNALS; iter++){
 
-            if(personal->internals_array[iter] != NULL){
-                printf("Sending: %s\n", retrieve_buffer);
-                send_tcp(personal, personal->internals_array[iter], retrieve_buffer);                
-            }
-        }
-    }
-    return 0;
-}//retrieve
+//             if(personal->internals_array[iter] != NULL){
+//                 printf("Sending: %s\n", retrieve_buffer);
+//                 send_tcp(personal, personal->internals_array[iter], retrieve_buffer);                
+//             }
+//         }
+//     }
+//     return 0;
+// }//retrieve
 
 
 int show_topology(struct personal_node *personal){
@@ -698,77 +793,6 @@ int show_topology(struct personal_node *personal){
     }
     return success_flag;
 } // show_topology
-
-int show_names(objectQueue_t **contents){
-
-    int printed_names = 0; // counter of printed names
-    int success_flag = 0; //success signal for the main function
-
-    if(*contents == NULL){
-        printf("The node has no contents to print\n");
-        return ++success_flag;
-    }
-
-    printf("Printing names...\n\n");
-    objectQueue_t *queue_ptr; // pointer to go through the list
-
-    for(queue_ptr = *contents; queue_ptr != NULL; queue_ptr = queue_ptr->next){
-        printf("%s\n", queue_ptr->string);
-        printed_names++;
-    }
-    printf("\nNumber of printed names: %d\n", printed_names);
-    return success_flag;
-}//show_names
-
-int show_interest_table (struct personal_node *personal) { 
-
-    int success_flag = 0;
-
-    if(strcmp(personal->persn_info->network, "") == 0){
-        printf("Error in show interest table: You are not inside a network\n");
-        return ++success_flag;
-    }
-
-    printf("\nInterest Table: \n\n");
-    for (int i = 0; i < 10; i++) {
-        if (personal->interest_tab[i].node_id[0] != '\0') {
-            printf("Entry %d:\n", i + 1);
-            printf("ID: %s\nNetwork: %s\nAddress: %s\nPort: %s\n\n",
-                personal->interest_tab[i].node_id,
-                personal->interest_tab[i].network,
-                personal->interest_tab[i].node_addr,
-                personal->interest_tab[i].tcp_port);
-        }
-    }
-
-    return success_flag;
-}//show_interest_table  
-
-objectQueue_t *clear_names(objectQueue_t *queue_ptr){
-
-    int cleared_names = 0;  //number of names cleared
-
-    if(queue_ptr == NULL){
-        printf("No names to clear in this node\n");
-        return queue_ptr;
-    }
-    printf("\nClearing names...\n");
-
-    objectQueue_t *queue_ptr; // pointer to go through the list
-    objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
-    queue_ptr = contents;
-    while(queue_ptr != NULL){
-
-        aux = queue_ptr;
-        queue_ptr = queue_ptr->next;
-        free(aux->string);
-        free(aux);
-        cleared_names++;
-    }    
-    printf("\nNumber of cleared names: %d\n", cleared_names);
-    contents = NULL;
-    return contents;    
-}//clear_names()
 
 
 int leave(struct personal_node *personal) {

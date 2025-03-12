@@ -54,6 +54,15 @@ typedef struct objectQueue_t{
   
 // Insert function signature for queue management (init, delete, insert, search, clear)
 
+objectQueue_t *queueInit(objectQueue_t *queue_ptr, int size);
+
+objectQueue_t *insertNew(objectQueue_t *queue_ptr, char *string);
+
+objectQueue_t *deleteOld(objectQueue_t *queue_ptr, char *string);
+
+int queueSearch(objectQueue_t *queue_ptr, char *string);
+
+void clearQueue(objectQueue_t *queue_ptr);
 
 
  #endif

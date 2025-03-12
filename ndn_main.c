@@ -9,7 +9,9 @@
  * Description: source code for the main function
  ***********************************************************************************************/
 
-// general purpose libraries
+#define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
+
+ // general purpose libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -260,79 +262,23 @@ int main(int argc, char **argv){
     my_node->udp_address = server_addr;
     my_node->udp_port = server_port;
 
-
+    socklen_t srv_addrlen;        // size of the personal IPv4 address
+    struct sockaddr srv_addr;     // the IPv4 address
     // Start the event loop
 
-    int success_flag = 0;
-
-    int errflag;                  // flag to check for errors in function calls
-    socklen_t srv_addrlen;        // size of the personal IPv4 address
-    struct addrinfo *srv_result;  // list of address structures
-    struct addrinfo srv_criteria; // necessary criteria to select the address structures from the list
-    struct sockaddr srv_addr;     // the IPv4 address
-    
+    int success_flag = 0;    
+    int select_ctrl;
     int fd_itr = 0;              // an iterator to go through the FD set
+    char buffer[MAX_MSG_LENGTH]; // buffer to receive msg and cmd
+    char msg[MAX_MSG_LENGTH];    // msg to be sent by tcp_client
+    
     ssize_t nread;               // number of bytes read from a read operation
     ssize_t nleft;               // number of bytes left to fill the buffer capacity
     int new_fd;                  // a file descriptor to receive the "NEW" message and extract the id of the node
-    char buffer[MAX_MSG_LENGTH]; // buffer to receive msg and cmd
+
     char *ptr_bffr;              // pointer to buffer, to use with read operation;
     int i = 0, j = 0;            // iterators
-    int disc_nodeid = -1;         // id of the node that left the network
-    int select_ctrl = 0;         // flag to control select()
-    char msg[MAX_MSG_LENGTH];    // msg to be sent by tcp_client
- 
-    //Init
-
-    my_node->server_fd = socket(AF_INET, SOCK_STREAM, 0); // personal server socket for the intern nodes
-    if (my_node->server_fd < 0) {
-        printf("Error in socket()\n");
-        printf("This node cannot belong to a network.\n");
-        printf("Because of this, the process will be terminated\n");
-        // free and close everything
-        return 1;        
-    }
-
-    my_node->max_fd = my_node->server_fd;
-
-    memset(&srv_criteria, 0, sizeof(srv_criteria)); // set all bytes inside "criteria" to zero
-    srv_criteria.ai_family = AF_INET;               // family of IPv4 addresses
-    srv_criteria.ai_socktype = SOCK_STREAM;         // TCP socket
-    srv_criteria.ai_flags = AI_PASSIVE;             // passive socket that waits for requests
-
-    // pass the information in "criteria" to "srv_result" 
-
-    errflag = getaddrinfo(NULL, my_node->persn_info->tcp_port, &srv_criteria, &srv_result);
-    if (errflag != 0) {
-        printf("Error in getaddrinfo()\n");
-        printf("This node cannot belong to a network.\n");
-        printf("Because of this, the process will be terminated\n");
-        // free and close everything
-        return 1;
-    }
-
-    // bind the address in "srv_result" to the personal socket
-
-    errflag = bind(my_node->server_fd, srv_result->ai_addr, srv_result->ai_addrlen);
-    if (errflag == -1) {
-        printf("Error in bind()\n");
-        printf("This node cannot belong to a network.\n");
-        printf("Because of this, the process will be terminated\n");
-        // free and close everything
-        return 1;
-    }
-
-    freeaddrinfo(srv_result);
-    // Set the personal socket to listen to requests. Only 6 requests at a time
-
-    errflag = listen(my_node->server_fd, MAX_QUEUE_LENGTH_TCP); // the second argument refers to the number of pending connections allowed in the queue
-    if (errflag == -1) {
-        printf("Error in listen()\n");
-        printf("This node cannot belong to a network.\n");
-        printf("Because of this, the process will be terminated\n");
-        // free and close everything
-        return 1;
-    }
+    
 
     FD_ZERO(&my_node->crr_scks);              // Set set of FD's to zero
     FD_SET(STDIN_FILENO, &my_node->crr_scks); // add stdin(keyboard input) to FD set
@@ -360,21 +306,21 @@ int main(int argc, char **argv){
             free(my_node->internals_array);
             free_contact(my_node->persn_info);
 
-            if(my_node->queue_ptr != NULL){
+            // if(my_node->queue_ptr != NULL){
             
-                objectQueue_t *queue_ptr; // pointer to go through the list
-                objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
-                queue_ptr = my_node->contents;
+            //     objectQueue_t *queue_ptr; // pointer to go through the list
+            //     objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
+            //     queue_ptr = my_node->contents;
                 
-                while(queue_ptr != NULL){
+            //     while(queue_ptr != NULL){
 
-                    aux = queue_ptr;
-                    queue_ptr = queue_ptr->next;
-                    free(aux->string);
-                    free(aux);
+            //         aux = queue_ptr;
+            //         queue_ptr = queue_ptr->next;
+            //         free(aux->string);
+            //         free(aux);
                     
-                }                            
-            }
+            //     }                            
+            // }
                 
             free(my_node);
             exit(1);                
@@ -393,7 +339,8 @@ int main(int argc, char **argv){
                     printf("Handling your command...");
                     printf("\n_________________________________________________________________\n\n");
 
-                    select_cmd(my_node, buffer);                     
+                    select_cmd(my_node, buffer);                                        
+                    
                 }
 
                 // accept a connection, if you can
@@ -403,9 +350,9 @@ int main(int argc, char **argv){
                     if((new_fd = accept(my_node->server_fd, &srv_addr, &srv_addrlen)) == -1){
                         printf("Error in accept(). Request rejected\n");
                         //return 1;
-                    }
+                    }                    
                     
-                    FD_SET(new_fd, &my_node->crr_scks);
+                    FD_SET(new_fd, &my_node->crr_scks); // prepare to read the ENTRY message
                     if (new_fd > my_node->max_fd) my_node->max_fd = new_fd;
                     
                 }
@@ -428,6 +375,8 @@ int main(int argc, char **argv){
                         //return 1;
                     }
 
+                    sscanf(buffer, "%*s %s %s");
+
                     else if (nread == 0) {  //the fd is disconnected
                         
                         memset(&buffer, 0, sizeof(buffer));
@@ -436,7 +385,8 @@ int main(int argc, char **argv){
 
                             disc_nodeid = atoi(my_node->extern_node->node_id);
 
-                            printf("External neighbor (Interface %s/%s) disconnected!\n", my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
+                            printf("External neighbor (Interface %s/%s) disconnected!\n",
+                                 my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                             
                             my_node->client_fd = -1;   // Reset client_fd to -1
 
@@ -452,18 +402,22 @@ int main(int argc, char **argv){
                                 sleep(0.5);
                             }
                             
-                            if (strcmp(my_node->backup_node->node_id, my_node->persn_info->node_id) != 0) { //not an anchor                                                        
-                                contact_copy(my_node->extern_node, my_node->backup_node);                                
-                                memset(my_node->backup_node->network, 0, 4 * sizeof(*my_node->backup_node->network));
-                                memset(my_node->backup_node->tcp_port, 0, 6 * sizeof(*my_node->backup_node->tcp_port));
-                                memset(my_node->backup_node->node_addr, 0, 50 * sizeof(*my_node->backup_node->node_addr));
-
+                            if (strcmp(my_node->backup_node->node_addr, my_node->persn_info->node_addr) != 0) { //not an anchor                                                        
+                                
                                 memset(msg, 0, sizeof(msg));
                                 sprintf(msg, "%s %s %s\n", entry_str, my_node->persn_info->node_addr, my_node->persn_info->tcp_port);
                                 //Sends ENTRY message , receives SAFE response and updates backup node
                                 if(send_tcp(my_node, my_node->extern_node, msg) == 1){
                                     printf("Failed to send a message\n");
+                                    // dont update
                                 }
+                                
+                                contact_copy(my_node->extern_node, my_node->backup_node);                                
+                                memset(my_node->backup_node->network, 0, 4 * sizeof(*my_node->backup_node->network));
+                                memset(my_node->backup_node->tcp_port, 0, 6 * sizeof(*my_node->backup_node->tcp_port));
+                                memset(my_node->backup_node->node_addr, 0, 50 * sizeof(*my_node->backup_node->node_addr));
+
+                                // send safe to everybody else
 
                                 memset(msg, 0, sizeof(msg));
                                     sprintf(msg, "%s %s %s\n", safe_str, 
@@ -561,32 +515,7 @@ int main(int argc, char **argv){
                 }//else
             }//if
         }//for
-    }//while
-
-    if(tcp_server(my_node) == 1){ //caso haja algum erro no início desta função, sai suavemente 
-        leave(my_node);
-        free(my_node->internals_array);    
-        free_contact(my_node->persn_info);
-
-        if(my_node->contents != NULL){
-        
-            objectQueue_t *queue_ptr; // pointer to go through the list
-            objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
-            queue_ptr = my_node->contents;
-            
-            while(queue_ptr != NULL){
-
-                aux = queue_ptr;
-                queue_ptr = queue_ptr->next;
-                free(aux->string);
-                free(aux);
-                
-            }                            
-        }
-
-        free(my_node);
-        exit(1);
-    } 
+    }//while    
 }//main()
 
    

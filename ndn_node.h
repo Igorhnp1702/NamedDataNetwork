@@ -12,7 +12,7 @@
 #ifndef ndn_node_header
 #define ndn_node_header
 
-#include <ndn_queue.h>
+#include "ndn_queue.h"
 
 #define MAX_INTERNALS 99
 

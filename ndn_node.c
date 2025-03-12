@@ -31,6 +31,8 @@
 #include "ndn_node.h"
 #include "ndn_queue.h"
 
+int server_on = 0;
+
 nodeinfo_t *contact_init(nodeinfo_t *contact){
 
     contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t)); // the block itself
