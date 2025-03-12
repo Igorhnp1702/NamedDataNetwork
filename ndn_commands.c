@@ -729,6 +729,8 @@ int show_topology(struct personal_node *personal){
     int success_flag = 0;
     int printed_interns = 0;
 
+    nodesLinkedlist_t *aux;
+
     if(strcmp(personal->persn_info->network, "") != 0){
         printf("\n\nYour node:\n\n");        
         printf("Network: %s\nAdress: %s\nPort: %s\n\n",           
@@ -769,24 +771,23 @@ int show_topology(struct personal_node *personal){
 
     int iter;
         
-    if(personal->internals_array == NULL){
+    if(personal->internals_list == NULL){
         printf("\nThere are no internal neighbors\n");        
     }
     else{
         printf("\n\nPrinting internal neighbors: \n\n");        
             
-        for(iter = 0; iter < MAX_INTERNALS; iter++){
+        aux = personal->internals_list;
+        while(aux != NULL){
+                            
+            printf("ID: %s\nNetwork: %s\nAdress: %s\nPort: %s\n\n",                    
+                aux->node->network,
+                aux->node->node_addr,
+                aux->node->tcp_port);
 
-            if(personal->internals_array[iter] != NULL){
-
-                printf("ID: %s\nNetwork: %s\nAdress: %s\nPort: %s\n\n",                    
-                personal->internals_array[iter]->network,
-                personal->internals_array[iter]->node_addr,
-                personal->internals_array[iter]->tcp_port);
-
-                printed_interns++;
-            }//if            
-        }//for                    
+            printed_interns++;                        
+            aux = aux->next;
+        }                              
     }
     
     if(printed_interns == 0){ // the array is initialized
@@ -824,6 +825,7 @@ int leave(struct personal_node *personal) {
 
     strcpy(personal->persn_info->network, "");
     personal = reset_personal(personal);
+    server_on = 0;
     return 0;
 }//leave
 
