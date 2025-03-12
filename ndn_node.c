@@ -29,7 +29,7 @@
 // project libraries
 #include "ndn_commands.h"
 #include "ndn_node.h"
-#include "ndn_queue.h"
+//#include "ndn_queue.h"
 
 int server_on = 0;
 
@@ -66,7 +66,7 @@ struct personal_node *personal_init(struct personal_node *personal){
    
     /* set the start of the list to NULL */
 
-    personal->queue_ptr = NULL; 
+    //personal->queue_ptr = NULL; 
             
     //init neighbors array
 

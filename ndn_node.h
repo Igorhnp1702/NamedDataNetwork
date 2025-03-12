@@ -12,7 +12,7 @@
 #ifndef ndn_node_header
 #define ndn_node_header
 
-#include "ndn_queue.h"
+
 
 #define MAX_INTERNALS 99
 
@@ -40,6 +40,11 @@ int  *node_fd;   // the file descriptor assigned to this node
 char *node_buff; // buffer to store unfinished mesages
 } nodeinfo_t;
 
+
+typedef struct nodesLinkedlist{
+    nodeinfo_t node;
+    struct nodesLinkdedlist *next;
+} nodesLinkdedlist_t;
 
 
 /*****************************************************************************
@@ -69,20 +74,21 @@ char *node_buff; // buffer to store unfinished mesages
  ****************************************************************************/
 struct personal_node{
 
-nodeinfo_t *persn_info;          // contact of the personal node
-int anchorflag;                  // flag that says whether the node is an anchor or not (anchor = backup to itself)
-int n_internals;                 // counter for the number of internal neighbors
-int max_fd;                      // the maximum integer assigned to a file descriptor in this node's FD set
-int client_fd;                   // file descriptor to communicate with the extern node
-int server_fd;                   // to accept connections with other nodes
-char *udp_port;                  // UDP port of the server of nodes
-char *udp_address;               // UDP address of the server of nodes
-fd_set rdy_scks;                 // set of file descriptors with activity to handle (rdy = ready)
-fd_set crr_scks;                 // set of file descriptors in use (crr = current)
-objectQueue_t *queue_ptr;        // double linked list of the contents of the node
-nodeinfo_t *extern_node;         // contact of the extern neighbor node
-nodeinfo_t *backup_node;         // contact of the backup neighbor node
-nodeinfo_t **internals_array;    // array of contacts of intern neighbors. 
+nodeinfo_t *persn_info;             // contact of the personal node
+int anchorflag;                     // flag that says whether the node is an anchor or not (anchor = backup to itself)
+int n_internals;                    // counter for the number of internal neighbors
+int max_fd;                         // the maximum integer assigned to a file descriptor in this node's FD set
+int client_fd;                      // file descriptor to communicate with the extern node
+int server_fd;                      // to accept connections with other nodes
+char *udp_port;                     // UDP port of the server of nodes
+char *udp_address;                  // UDP address of the server of nodes
+fd_set rdy_scks;                    // set of file descriptors with activity to handle (rdy = ready)
+fd_set crr_scks;                    // set of file descriptors in use (crr = current)
+//objectQueue_t *queue_ptr;           // double linked list of the contents of the node
+nodeinfo_t *extern_node;            // contact of the extern neighbor node
+nodeinfo_t *backup_node;            // contact of the backup neighbor node
+nodeinfo_t **internals_array;       // array of contacts of internal neighbors. 
+nodesLinkdedlist_t *internals_list; // list of contacts of internal neighbors
 };
 
 /******************************************************************

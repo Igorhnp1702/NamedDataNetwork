@@ -32,8 +32,8 @@
 #include "ndn_node.h"
 #include "ndn_commands.h"
 #include "ndn_messages.h"
-#include "ndn_interestTable.h"
-#include "ndn_queue.h"
+// #include "ndn_interestTable.h"
+// #include "ndn_queue.h"
 
 
 
@@ -373,9 +373,7 @@ int main(int argc, char **argv){
                     if (nread == -1) {
                         printf("Error in read: %s\n", strerror(errno));
                         //return 1;
-                    }
-
-                    sscanf(buffer, "%*s %s %s");
+                    }                    
 
                     else if (nread == 0) {  //the fd is disconnected
                         
@@ -383,7 +381,7 @@ int main(int argc, char **argv){
                         
                         if (fd_itr == my_node->client_fd) {    //External neighbor disconnected
 
-                            disc_nodeid = atoi(my_node->extern_node->node_id);
+                            
 
                             printf("External neighbor (Interface %s/%s) disconnected!\n",
                                  my_node->extern_node->node_addr, my_node->extern_node->tcp_port);

@@ -9,9 +9,7 @@
  * Description: source code for the messages
  ***********************************************************************************************/
 
- #define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
-
- #include "ndn_messages.h"
+#define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
 
 // general purpose libraries
 #include <stdio.h>
@@ -29,6 +27,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <signal.h>
+
+// project libraries
+#include "ndn_messages.h"
 
  char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net){ // register the node
 
