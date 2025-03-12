@@ -494,6 +494,7 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
         // free and close everything
         return 1;
     }
+    server_on = 1;
 
     strcpy(personal->persn_info->network, net);
 
@@ -506,7 +507,9 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
     else{
                 
         //Sends ENTRY message
-        if(send_entry(personal->client_fd, connectIP, connectTCP) == NULL){
+        if(send_entry(personal->client_fd, personal->persn_info->node_addr, personal->persn_info->tcp_port, 
+                      connectIP, connectTCP) == NULL){
+                        
             printf("Error in direct join: Failed to join the network\n");
             // unregister from the node server, if necessary
             // clear all data

@@ -41,10 +41,10 @@ char *node_buff; // buffer to store unfinished mesages
 } nodeinfo_t;
 
 
-typedef struct nodesLinkedlist{
-    nodeinfo_t node;
-    struct nodesLinkdedlist *next;
-} nodesLinkdedlist_t;
+typedef struct nodesLinkedlist_t{
+    nodeinfo_t *node;
+    struct nodesLinkedlist_t *next;
+} nodesLinkedlist_t;
 
 
 /*****************************************************************************
@@ -88,7 +88,7 @@ fd_set crr_scks;                    // set of file descriptors in use (crr = cur
 nodeinfo_t *extern_node;            // contact of the extern neighbor node
 nodeinfo_t *backup_node;            // contact of the backup neighbor node
 nodeinfo_t **internals_array;       // array of contacts of internal neighbors. 
-nodesLinkdedlist_t *internals_list; // list of contacts of internal neighbors
+nodesLinkedlist_t *internals_list; // list of contacts of internal neighbors
 };
 
 /******************************************************************
@@ -168,5 +168,13 @@ void free_contact(nodeinfo_t *contact);
  *  Return: pointer to dest node;
  ****************************************************************/
 void contact_copy(nodeinfo_t *dest, nodeinfo_t *src);
+
+nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node);
+
+nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head);
+
+nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd);
+
+
 
 #endif

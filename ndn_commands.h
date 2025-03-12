@@ -56,7 +56,7 @@
 #define clear_str "clear"                   // partial cmd string
 #define clear_names_str_short "cn"          // short for clear names
 
-
+int server_on = 0;
 
 /*------------------------------------User inteface funcions----------------------------------------*/
 

@@ -169,7 +169,7 @@ char *send_retrieve(){
 
 }
 
-char *send_entry(int *fd, char *mynode_IP, char *mynode_TCP){
+char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char *dest_tcp){
     
     struct addrinfo srv_criteria, *srv_result; 
     int errflag;
@@ -203,7 +203,7 @@ char *send_entry(int *fd, char *mynode_IP, char *mynode_TCP){
         srv_criteria.ai_family = AF_INET;       //IPv4 address family
         srv_criteria.ai_socktype = SOCK_STREAM; // TCP socket
 
-        errflag = getaddrinfo(mynode_IP, mynode_TCP, &srv_criteria, &srv_result);
+        errflag = getaddrinfo(dest_ip, dest_tcp, &srv_criteria, &srv_result);
         if(errflag != 0){
             printf("Send entry: Error in getaddrinfo()\n");
             return NULL;
@@ -218,7 +218,7 @@ char *send_entry(int *fd, char *mynode_IP, char *mynode_TCP){
         freeaddrinfo(srv_result);
     }
 
-    sprintf(buffer, "%s %s %s\n", entry_str, mynode_IP, mynode_TCP);
+    sprintf(buffer, "%s %s %s\n", entry_str, mynode_ip, mynode_tcp);
     ptr = buffer;
     nbytes = strlen(buffer);
     nleft = nbytes;
@@ -277,7 +277,7 @@ char *send_noobject(){
     
 }
 
-int rcv_tcp(struct personal_node *slf_node, char *msg, int *src_fd, char *source_IP, char *source_TCP){
+int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
     int success_flag = 0;
 
@@ -304,6 +304,8 @@ int rcv_tcp(struct personal_node *slf_node, char *msg, int *src_fd, char *source
     int i = 0;          //iterator
                
     int fd_gateway;     // variable to store the file descriptor to use
+
+    nodeinfo_t *new_internal;
 
     
     
@@ -379,13 +381,14 @@ int rcv_tcp(struct personal_node *slf_node, char *msg, int *src_fd, char *source
                 slf_node->anchorflag = 1; 
             }
             else {
-                slf_node->neighbrs[atoi(id1_cmd)] = contact_init(slf_node->neighbrs[atoi(id1_cmd)]);
-                strcpy(slf_node->neighbrs[atoi(id1_cmd)]->network, slf_node->persn_info->network);
-                strcpy(slf_node->neighbrs[atoi(id1_cmd)]->node_id, id1_cmd);
-                strcpy(slf_node->neighbrs[atoi(id1_cmd)]->tcp_port, tcp_cmd);
-                strcpy(slf_node->neighbrs[atoi(id1_cmd)]->node_addr, ip_cmd);
-                slf_node->n_neighbrs++;
-                slf_node->neighbrs_fd[atoi(id1_cmd)] = *src_fd;
+                
+                new_internal = contact_init(new_internal);
+                strcpy(new_internal->network, slf_node->persn_info->network);
+                strcpy(new_internal->node_addr, tcp_cmd);
+                strcpy(new_internal->node_addr, ip_cmd);
+                new_internal->node_fd = *src_fd;
+
+                insertnode(slf_node->internals_list, new_internal);                                
             }
             //sprintf(snd_msg, "%s %s %s %s\n", e_str, slf_node->extern_node->node_id,slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
             

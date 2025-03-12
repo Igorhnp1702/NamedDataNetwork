@@ -31,7 +31,7 @@
 #include "ndn_node.h"
 //#include "ndn_queue.h"
 
-int server_on = 0;
+
 
 nodeinfo_t *contact_init(nodeinfo_t *contact){
 
@@ -42,6 +42,8 @@ nodeinfo_t *contact_init(nodeinfo_t *contact){
     contact->network = (char*)calloc(MAX_NET_CHARS, sizeof(char));      // integer from 000 to 999
     contact->tcp_port = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char));     // tcp port; integer from 0 to 65 536
     contact->node_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char));   // IPv4 address
+    contact->node_buff = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));
+    contact->node_fd = -1;
     //!ponderar inicializar tudo com NULL em vez de 0
     return contact;
 }//contact_init()
@@ -141,3 +143,109 @@ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
 
     return;
 }//contact_copy()
+
+nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head){
+
+    nodesLinkedlist_t *newlist_head = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t));
+
+    newlist_head->node = contact_init(newlist_head->node);
+    newlist_head->next = NULL;
+    head = newlist_head;
+
+    return head;
+
+}
+
+nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
+
+    // Check if the list is initialized
+
+    if(head == NULL){
+        printf("Error in insertnode: list is not initialized");
+        return NULL;
+    }
+    
+    nodesLinkedlist_t *aux, *new_block;    
+
+    // Write the info in memory
+
+    new_block = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t));
+    new_block->node = contact_init(new_block->node);
+    contact_copy(new_block->node, new_node);
+    new_block->next = NULL;
+
+    // Go through the list and insert at the end
+
+    aux = head;
+
+    while(aux->next != NULL){
+        aux = aux->next;
+    }
+
+    aux->next = new_block;
+    printf("Successfully inserted %s | %s in the neighbor list\n", new_node->node_addr, new_node->tcp_port);
+    return head;
+
+}
+
+nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
+
+    if(head == NULL){
+		printf("\nThe list is empty\n\n");
+		return head;
+	}
+
+    nodesLinkedlist_t *listptr, *aux;
+	listptr = head;
+
+	if(head->node->node_fd == old_fd){ //if the head has the desired node
+
+		printf("\n%s | %s was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
+        aux = head;
+		head = head->next;
+		free_contact(aux->node);		
+		free(aux);		
+		if(head == NULL){
+			printf("\nThe list of internals is now empty\n\n");
+		}
+		return head;			
+	}
+	
+	while(listptr != NULL){
+
+		if(listptr->next == NULL && listptr->node->node_fd == old_fd){
+			printf("\nThe name was not found\n\n");
+			return head;
+		}
+		else if(listptr->node->node_fd == old_fd){ //first or last node, and it contains the name
+
+			printf("\n%s | %s was removed from the internals list\n\n", listptr->node->node_addr, listptr->node->tcp_port);
+            aux = listptr;
+			listptr = listptr->next;			
+			free_contact(aux->node);
+			free(aux);
+			
+			if(listptr == NULL){
+				printf("\nThe list of internals is now empty\n\n");
+			}
+			return head;
+		}		
+		else if(*(listptr)->next->node->node_fd == old_fd){
+			
+			printf("\n%s | %s was removed from the internals list\n\n", listptr->next->node->node_addr, listptr->next->node->tcp_port);
+            aux = listptr->next;
+			listptr->next = listptr->next->next;			
+			free_contact(aux->node);
+			free(aux);
+			
+			return head;
+			
+		}
+		else listptr = listptr->next;
+	}
+	return head;
+}
+
+void clearnodelist(nodesLinkedlist_t *head){
+
+}

@@ -55,8 +55,10 @@ char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP,
 
 char *node_unreg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net);
 
-char* send_entry(int *fd, char *node_IP, char *node_TCP);
+char* send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char *dest_tcp);
 
 char *send_safe(int fd, char *ext_ip, char *ext_tcp);
+
+int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd);
 
 #endif
