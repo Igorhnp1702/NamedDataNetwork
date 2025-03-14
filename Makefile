@@ -17,7 +17,7 @@ APPNAME = ndn
 SRCDIR = 
 OBJDIR = 
 
-OBJFILES = ${OBJDIR}ndn_main.o ${OBJDIR}ndn_node.o ${OBJDIR}ndn_commands.o  ${OBJDIR}ndn_messages.o ${OBJDIR}ndn_queue.o
+OBJFILES = ${OBJDIR}ndn_main.o ${OBJDIR}ndn_node.o ${OBJDIR}ndn_commands.o  ${OBJDIR}ndn_messages.o 
 
 
 all: ndn
@@ -28,13 +28,13 @@ ndn: ${OBJFILES}
 ${OBJDIR}ndn_main.o: ${SRCDIR}ndn_main.c ${SRCDIR}ndn_node.h ${SRCDIR}ndn_commands.h ${SRCDIR}ndn_messages.h # ${SRCDIR}ndn_queue.h ${SRCDIR}ndn_interestTable.h
 	${CC} ${CFLAGS} -c ${SRCDIR}ndn_main.c -o ${OBJDIR}ndn_main.o
 
-${OBJDIR}ndn_node.o: ${SRCDIR}ndn_node.c ${SRCDIR}ndn_node.h ${SRCDIR}ndn_commands.h  # check ndn_node dependencies
+${OBJDIR}ndn_node.o: ${SRCDIR}ndn_node.c ${SRCDIR}ndn_node.h ${SRCDIR}ndn_commands.h ${SRCDIR}ndn_messages.h  # check ndn_node dependencies
 	${CC} ${CFLAGS} -c ${SRCDIR}ndn_node.c -o ${OBJDIR}ndn_node.o
 
 ${OBJDIR}ndn_commands.o: ${SRCDIR}ndn_commands.c ${SRCDIR}ndn_commands.h ${SRCDIR}ndn_node.h ${SRCDIR}ndn_messages.h # check ndn_commands dependencies
 	${CC} ${CFLAGS} -c ${SRCDIR}ndn_commands.c -o ${OBJDIR}ndn_commands.o
 
-${OBJDIR}ndn_messages.o: ${SRCDIR}ndn_messages.c ${SRCDIR}ndn_messages.h # check ndn_messages dependencies
+${OBJDIR}ndn_messages.o: ${SRCDIR}ndn_messages.c ${SRCDIR}ndn_messages.h ${SRCDIR}ndn_node.h ${SRCDIR}ndn_commands.h# check ndn_messages dependencies
 	${CC} ${CFLAGS} -c ${SRCDIR}ndn_messages.c -o ${OBJDIR}ndn_messages.o
 
 #${OBJDIR}ndn_queue.o: ${SRCDIR}g23tcp_udp.c ${SRCDIR}g23tcp_udp.h ${SRCDIR}g23funcs.h # check ndn_queue dependencies

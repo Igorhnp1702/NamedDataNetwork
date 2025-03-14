@@ -9,9 +9,9 @@
  * Description: source code for the main function
  ***********************************************************************************************/
 
-#define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
+//#define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
 
- // general purpose libraries
+// general purpose libraries
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,48 +61,23 @@ int main(int argc, char **argv){
     char *personal_addr;        // Personal IPv4 addres
     char *personal_port;        // Personal TCP port
     char *server_addr;          // The server's IPv4 address
-    char *server_port;          // The server's UDP port
-    int cache_size;             // integer variable to store the cache size
-
-    errno = 0;                      // reset error indicator
-    char *num_string_check;  // for the strtol function
-        
+    char *server_port;          // The server's UDP port        
+            
     if (argc == 4)
     {
-
-        cache_size = strtol(argv[1], num_string_check, 10);
-
-        if(cache_size < 0 || errno == ERANGE){
-            printf("Error in cache size: number out of range\n");
-            printf("Pick a number between 0 and 4294967295\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-        else if(*num_string_check != "\0"){
-            printf("Error in cache size: non-numeric character detected\n");
-            printf("Process terminated\n");
-        }
-
-        if(!is_valid_ip(argv[2])){
-            printf("Error in personal IPv4 address: the address is invalid\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-
-        personal_addr = argv[2];
         
-        if(strtol(argv[3], num_string_check, 10) < 0 || strtol(argv[3], num_string_check, 10) > 65535){
-            printf("Error in personal port: number out of range\n");
-            printf("Pick a number between 0 and 65535\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-        else if(*num_string_check != "\0"){
-            printf("Error in personal port: non-numeric character detected\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
+        if(!is_valid_ip(argv[2])){
 
+            printf("Invalid personal IPv4 address. Process terminated\n");
+            exit(1);
+        }
+        personal_addr = argv[2];               
+
+        if(check_ports(argv[3]) == 1){
+
+            printf("Error: invalid port. Process terminated\n");
+            exit(1);
+        }
         personal_port = argv[3];
 
         printf("The node server's IPv4 address will default to %s\n", DEFAULT_REGIP);
@@ -115,39 +90,18 @@ int main(int argc, char **argv){
 
     if (argc == 5)
     {
-        cache_size = strtol(argv[1], num_string_check, 10);
-
-        if(cache_size < 0 || errno == ERANGE){
-            printf("Error in cache size: number out of range\n");
-            printf("Pick a number between 0 and 4294967295\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-        else if(*num_string_check != "\0"){
-            printf("Error in cache size: non-numeric character detected\n");
-            printf("Process terminated\n");
-        }
-
         if(!is_valid_ip(argv[2])){
-            printf("Error in personal IPv4 address: the address is invalid\n");
-            printf("Process terminated\n");
+
+            printf("Invalid personal IPv4 address. Process terminated\n");
             exit(1);
         }
-        
         personal_addr = argv[2];
+       
+        if(check_ports(argv[3]) == 1){
 
-        if(strtol(argv[3], num_string_check, 10) < 0 || errno == ERANGE){
-            printf("Error in personal port: number out of range\n");
-            printf("Pick a number between 0 and 4294967295 (65565 might be the MAXPORT)\n");
-            printf("Process terminated\n");
+            printf("Error: invalid port. Process terminated\n");
             exit(1);
         }
-        else if(*num_string_check != "\0"){
-            printf("Error in personal port: non-numeric character detected\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-
         personal_port = argv[3];
 
         // test format to see if it's an ip address or not
@@ -160,19 +114,7 @@ int main(int argc, char **argv){
             server_port = DEFAULT_REGUDP;
 
         }else{ // if test fails
-            
-            if(strtol(argv[4], num_string_check, 10) < 0 || errno == ERANGE){
-                printf("Error in node server's port: number out of range\n");
-                printf("Pick a number between 0 and 4294967295 (65565 might be the MAXPORT)\n");
-                printf("Process terminated\n");
-                exit(1);
-            }
-            else if(*num_string_check != "\0"){
-                printf("Error in node server's port: non-numeric character detected\n");
-                printf("Process terminated\n");
-                exit(1);
-            }
-            
+                                   
             server_port = argv[4];
 
             printf("The node server's IPv4 address will default to %s\n", DEFAULT_REGIP);
@@ -184,58 +126,31 @@ int main(int argc, char **argv){
 
     if (argc == 6)
     {
-
-        cache_size = strtol(argv[1], num_string_check, 10);
-
-        if(cache_size < 0 || errno == ERANGE){
-            printf("Error in cache size: number out of range\n");
-            printf("Pick a number between 0 and 4294967295\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-        else if(*num_string_check != "\0"){
-            printf("Error in cache size: non-numeric character detected\n");
-            printf("Process terminated\n");
-        }
-
+    
         if(!is_valid_ip(argv[2])){
-            printf("Error in personal IPv4 address: the address is invalid\n");
-            printf("Process terminated\n");
+
+            printf("Invalid personal IPv4 address. Process terminated\n");
             exit(1);
         }
-
         personal_addr = argv[2];
 
-        if(strtol(argv[3], num_string_check, 10) < 0 || errno == ERANGE){
-            printf("Error in personal port: number out of range\n");
-            printf("Pick a number between 0 and 4294967295 (65565 might be the MAXPORT)\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-        else if(*num_string_check != "\0"){
-            printf("Error in personal port: non-numeric character detected\n");
-            printf("Process terminated\n");
+        if(check_ports(argv[3]) == 1){
+
+            printf("Error: invalid port. Process terminated\n");
             exit(1);
         }
         personal_port = argv[3];
+        
+        if(!is_valid_ip(argv[4])){
 
-        if(!is_valid_ip(argv[2])){
-            printf("Error in node server's IPv4 address: the address is invalid\n");
-            printf("Process terminated\n");
+            printf("Invalid IPv4 address for the server. Process terminated\n");
             exit(1);
         }
-
         server_addr = argv[4];
+        
+        if(check_ports(argv[5]) == 1){
 
-        if(strtol(argv[4], num_string_check, 10) < 0 || errno == ERANGE){
-            printf("Error in node server's port: number out of range\n");
-            printf("Pick a number between 0 and 4294967295 (65565 might be the MAXPORT)\n");
-            printf("Process terminated\n");
-            exit(1);
-        }
-        else if(*num_string_check != "\0"){
-            printf("Error in node server's port: non-numeric character detected\n");
-            printf("Process terminated\n");
+            printf("Error: invalid port. Process terminated\n");
             exit(1);
         }
         server_port = argv[5];
@@ -266,7 +181,7 @@ int main(int argc, char **argv){
     struct sockaddr srv_addr;     // the IPv4 address
     // Start the event loop
 
-    int success_flag = 0;    
+      
     int select_ctrl;
     int fd_itr = 0;              // an iterator to go through the FD set
     char buffer[MAX_MSG_LENGTH]; // buffer to receive msg and cmd
@@ -279,18 +194,16 @@ int main(int argc, char **argv){
     nodesLinkedlist_t *aux;
 
     char *ptr_bffr;              // pointer to buffer, to use with read operation;
-    int i = 0, j = 0;            // iterators
-    
-
-    FD_ZERO(&my_node->crr_scks);              // Set set of FD's to zero
-    FD_SET(STDIN_FILENO, &my_node->crr_scks); // add stdin(keyboard input) to FD set
-    FD_SET(my_node->server_fd, &my_node->crr_scks);           // add server socket to FD set
+        
+    FD_ZERO(&my_node->crr_scks);                              // Set set of FD's to zero
+    FD_SET(STDIN_FILENO, &my_node->crr_scks);                 // add stdin(keyboard input) to FD set    
 
     // Infinite cycle where the communications happen
 
     while (1) {
     
         printf("\nChecking activity...\n\n");
+        
         //In case old external neigbor disconnected, add new one to FD set
         if ((my_node->client_fd != -1) && (!FD_ISSET(my_node->client_fd, &my_node->crr_scks))) {
             FD_SET(my_node->client_fd, &my_node->crr_scks);
@@ -304,7 +217,7 @@ int main(int argc, char **argv){
 
         if (select_ctrl < 0) {         
             printf("Error in select: %s.\nProcess terminated\n", strerror(errno));
-            leave(my_node);        
+            //leave(my_node);        
             free(my_node->internals_array);
             free_contact(my_node->persn_info);
 
@@ -395,8 +308,8 @@ int main(int argc, char **argv){
                                 printf("Sending %s %s %s\n", entry_str, my_node->persn_info->node_addr, my_node->persn_info->tcp_port);
                                 //Sends ENTRY message , receives SAFE response and updates backup node
                                 
-                                if(send_entry(my_node->client_fd, my_node->persn_info->node_addr, my_node->persn_info->tcp_port,
-                                              my_node->backup_node->node_addr, my_node->backup_node->tcp_port) == 1){
+                                if(strcmp(send_entry(&(my_node->client_fd), my_node->persn_info->node_addr, my_node->persn_info->tcp_port,
+                                              my_node->backup_node->node_addr, my_node->backup_node->tcp_port), "1") != 0){
                                     printf("Failed to send a message\n");
                                     // dont update
                                 }

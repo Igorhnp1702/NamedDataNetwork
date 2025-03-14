@@ -27,22 +27,26 @@
 #include <signal.h>
 
 // project libraries
-#include "ndn_commands.h"
 #include "ndn_node.h"
+#include "ndn_messages.h"
 //#include "ndn_queue.h"
 
 
 
 nodeinfo_t *contact_init(nodeinfo_t *contact){
 
-    contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t)); // the block itself
+    
 
     /* initializing positive integer variables to -1 */
           
-    contact->network = (char*)calloc(MAX_NET_CHARS, sizeof(char));      // integer from 000 to 999
-    contact->tcp_port = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char));     // tcp port; integer from 0 to 65 536
-    contact->node_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char));   // IPv4 address
-    contact->node_buff = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));
+    if((contact->network = (char*)calloc(MAX_NET_CHARS, sizeof(char))) == NULL ||      // integer from 000 to 999
+       (contact->tcp_port = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char))) == NULL ||     // tcp port; integer from 0 to 65 536
+       (contact->node_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char))) == NULL ||   // IPv4 address
+       (contact->node_buff = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
+
+        printf("Error in contact_init: Failed to allocate memory for the node's members. Process terminated\n");
+        exit(1);
+    }   
     contact->node_fd = -1;
     //!ponderar inicializar tudo com NULL em vez de 0
     return contact;
@@ -50,8 +54,6 @@ nodeinfo_t *contact_init(nodeinfo_t *contact){
 
 
 struct personal_node *personal_init(struct personal_node *personal){
-
-    int iter = 0;
 
     personal = (struct personal_node*)calloc(1, sizeof(struct personal_node));
 
@@ -70,13 +72,11 @@ struct personal_node *personal_init(struct personal_node *personal){
 
     //personal->queue_ptr = NULL; 
             
-    //init neighbors array
+    //init neighbors list
 
-    personal->internals_array = (nodeinfo_t **)malloc(MAX_INTERNALS * sizeof(nodeinfo_t *));
-    for (iter = 0; iter < MAX_INTERNALS; iter++) {
-        personal->internals_array[iter] = NULL;
-    }   
-
+    personal->internals_list = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t));
+    Listinit(personal->internals_list);
+    
     return personal;
 }//personal_init()
 
@@ -94,8 +94,7 @@ void free_contact(nodeinfo_t *contact){
 
 
 struct personal_node *reset_personal(struct personal_node *personal){
-   
-    int iter = 0;
+       
     nodesLinkedlist_t *aux1, *aux2;
 
     /* clear the memory for the internal nodes */
@@ -148,11 +147,15 @@ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
 
 nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head){
 
-    nodesLinkedlist_t *newlist_head = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t));
-
-    newlist_head->node = contact_init(newlist_head->node);
-    newlist_head->next = NULL;
-    head = newlist_head;
+    
+    if((head->node = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t))) == NULL){
+        printf("Error in Listinit: Failed to allocate memory for a node list. Process terminated\n");
+        return NULL;
+    } 
+    
+    contact_init(head->node);
+    head->next = NULL;
+    
 
     return head;
 
@@ -171,8 +174,12 @@ nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
 
     // Write the info in memory
 
-    new_block = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t));
-    new_block->node = contact_init(new_block->node);
+    if((new_block = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t))) == NULL){
+        printf("Error in insertnode: Failed to allocate memory");
+        return NULL;
+    }
+    new_block->node = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t));
+    contact_init(new_block->node);
     contact_copy(new_block->node, new_node);
     new_block->next = NULL;
 
@@ -232,7 +239,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 			}
 			return head;
 		}		
-		else if(*(listptr)->next->node->node_fd == old_fd){
+		else if(listptr->next->node->node_fd == old_fd){
 			
 			printf("\n%s | %s was removed from the internals list\n\n", listptr->next->node->node_addr, listptr->next->node->tcp_port);
             aux = listptr->next;
@@ -246,8 +253,4 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 		else listptr = listptr->next;
 	}
 	return head;
-}
-
-void clearnodelist(nodesLinkedlist_t *head){
-
 }

@@ -14,6 +14,7 @@
 // general purpose libraries
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 
@@ -27,8 +28,6 @@
 
 // project libraries
 #include "ndn_commands.h"
-#include "ndn_messages.h"
-#include "ndn_node.h"
 
 /*------------------------------------------Argument checking functions------------------------------------------*/
 
@@ -60,7 +59,7 @@ int check_ports(char *port_str){
     
     if(length > 5) return ++flag;
     
-    if(atoi(port_str) > 65536)return ++flag;
+    if(atoi(port_str) < 0 || 65535 < atoi(port_str) ) return ++flag;
     
     else return flag;
 }//check_ports()
@@ -89,7 +88,7 @@ void select_cmd(struct personal_node *personal, char *input){
     char cmd_str2[MAX_MSG_CMD_SIZE];  memset(cmd_str2, 0, sizeof(cmd_str2));   // should be enough for the first string of the command
     char cmd_str3[MAX_MSG_CMD_SIZE];  memset(cmd_str3, 0, sizeof(cmd_str3));   // should be enough for the first string of the command
     char address[MAX_ADDRESS_SIZE];   memset(address, 0, sizeof(address));     // an IPv4 address passed in the commands
-    char content[MAX_CONTENT_NAME];   memset(content, 0, sizeof(content));     // the name of a content passed in the commands
+    char content[MAX_OBJECT_NAME];    memset(content, 0, sizeof(content));     // the name of a content passed in the commands
 
     // parse the first string
 
@@ -113,7 +112,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("Failed to read arguments of %s\n", join_str); 
             return;
         } 
-    }// if
+    }//if
 
     else if(strcmp(cmd_str1, direct_join_str_short) == 0){
 
@@ -259,7 +258,7 @@ void select_cmd(struct personal_node *personal, char *input){
         if(strcmp(personal->persn_info->network, "") == 0){
             printf("The node is already without a network.\n");
         }
-        leave(personal);
+        //leave(personal);
 
     }//else if leave
 
@@ -269,7 +268,7 @@ void select_cmd(struct personal_node *personal, char *input){
         // free the memory, close the fds and get out of the program     
         
         printf("Executing %s...\n\n", exit_str);
-        leave(personal);        
+        //leave(personal);        
         free(personal->internals_array);
         free_contact(personal->persn_info);
 
@@ -317,7 +316,9 @@ int join(struct personal_node *personal, char *net) {
     int success_flag = 0;
     char picked_ip[51];
     char picked_tcp[6];
-
+    nodesLinkedlist_t *serverlist = Listinit(serverlist);
+    nodeinfo_t *aux = contact_init(aux);
+        
     // check the arguments
 
     if(strcmp(personal->persn_info->network, "") != 0){
@@ -338,10 +339,10 @@ int join(struct personal_node *personal, char *net) {
         printf("Error in join: failed to inquire the server\n\n");
         return ++success_flag;
     }
-    udp_flag++; 
+    
     const char delim[2] = "\n";
     char *token;
-    int n_nodes = 0, node_counter = 0, random_number;
+    int n_nodes = 0;
     
     // print the response from the node server, line by line, and count the amount of nodes
 
@@ -352,31 +353,26 @@ int join(struct personal_node *personal, char *net) {
     while (token != NULL) {                                         
         
         token = strtok(NULL, delim);
+        if(token == NULL) break;
+        
         printf("%s\n", token);
         n_nodes++;
     }
 
-    printf("%d nodes reported in the network\n\n", n_nodes);
-
-    if(n_nodes > 0){ // if the network is not empty, pick a node from the list to connect to
     
-        random_number = num_gen(n_nodes);
 
-        printf("The node in the no. %d position was picked for connection.\n\n", random_number);
-        printf("Preparing to connect...\n\n");
+    if(n_nodes > 0){ // if the network is not empty, pick the first node
+        
+        printf("%d nodes reported in the network\n\n", n_nodes);
 
         token = strtok(nodeslist, delim);
-        printf("%s\n\n", token); // first line (nodeslist net\n)
-        while (token != NULL) {                                         
-            
-            token = strtok(NULL, delim);
-            node_counter++;
-            if(node_counter == random_number){
-                sscanf(token, "%s %s", picked_ip, picked_tcp);
-                break;
-            }        
+        // printf("%s\n\n", token); // first line (nodeslist net\n)
+        if(token != NULL){
+            token = strtok(NULL, delim);                
+            sscanf(token, "%s %s", picked_ip, picked_tcp);
         }
-
+        
+                                     
         // try to connect
 
         if(djoin(personal, net, picked_ip, picked_tcp) == 1) {
@@ -386,6 +382,8 @@ int join(struct personal_node *personal, char *net) {
     }
     else{ // empty network, 
         
+        printf("The network is empty. You are the first to join\n");
+
         memset(personal->persn_info->network, 0, 4*sizeof(char));
         if(djoin(personal, net, "0.0.0.0", personal->persn_info->tcp_port) == 1) {
             printf("Error in join: Failed to enter the network\n");
@@ -420,16 +418,14 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
         printf("Error in direct join: The network is invalid. Command ignored\n");
         printf("Please insert a three digit network from 000 to 999\n");
         return ++success_flag;
-    }
-
-    if(udp_flag == 0){
+    }    
            
-        if(check_ports(connectTCP) == 1){
-            printf("Error in direct join: The boot TCP port is invalid. Command ignored\n");
-            printf("Please insert a 1 to 5 digit TCP port from 0 to 65536");
-            return ++success_flag;
-        }
+    if(check_ports(connectTCP) == 1){
+        printf("Error in direct join: The boot TCP port is invalid. Command ignored\n");
+        printf("Please insert a 1 to 5 digit TCP port from 0 to 65536");
+        return ++success_flag;
     }
+    
 
     int errflag;                  // flag to check for errors in function calls    
     struct addrinfo *srv_result;  // list of address structures
@@ -452,7 +448,7 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
         return 1;        
     }
     setsockopt(personal->server_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-
+    FD_SET(personal->server_fd, &personal->crr_scks);           // add server socket to FD set
 
     personal->max_fd = personal->server_fd;
 
@@ -493,8 +489,7 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
         printf("Because of this, the process will be terminated\n");
         // free and close everything
         return 1;
-    }
-    server_on = 1;
+    }    
 
     strcpy(personal->persn_info->network, net);
 
@@ -507,7 +502,7 @@ int djoin(struct personal_node *personal, char *net, char *connectIP, char *conn
     else{
                 
         //Sends ENTRY message
-        if(send_entry(personal->client_fd, personal->persn_info->node_addr, personal->persn_info->tcp_port, 
+        if(send_entry(&(personal->client_fd), personal->persn_info->node_addr, personal->persn_info->tcp_port, 
                       connectIP, connectTCP) == NULL){
                         
             printf("Error in direct join: Failed to join the network\n");
@@ -767,9 +762,7 @@ int show_topology(struct personal_node *personal){
     }   
     else {
         printf("\nThere is no backup neighbor!\n");   
-    }
-
-    int iter;
+    }    
         
     if(personal->internals_list == NULL){
         printf("\nThere are no internal neighbors\n");        
@@ -780,7 +773,7 @@ int show_topology(struct personal_node *personal){
         aux = personal->internals_list;
         while(aux != NULL){
                             
-            printf("ID: %s\nNetwork: %s\nAdress: %s\nPort: %s\n\n",                    
+            printf("Network: %s\nAdress: %s\nPort: %s\n\n",                    
                 aux->node->network,
                 aux->node->node_addr,
                 aux->node->tcp_port);
@@ -799,35 +792,35 @@ int show_topology(struct personal_node *personal){
 } // show_topology
 
 
-int leave(struct personal_node *personal) {
+// int leave(struct personal_node *personal) {
     
-    if(strcmp(personal->persn_info->network, "") == 0){        
-        //personal = reset_personal(personal);
-        printf("Error in leave command: You are not inside a network\n");
-        return 1;
-    }
+//     if(strcmp(personal->persn_info->network, "") == 0){        
+//         //personal = reset_personal(personal);
+//         printf("Error in leave command: You are not inside a network\n");
+//         return 1;
+//     }
     
-    if(udp_flag == 1){
-        char msg[MAX_MSG_LENGTH];
-        memset(msg, 0, sizeof(msg));
-        sprintf(msg, "%s %s\n", unreg_str, personal->persn_info->network);
-        send_udp(personal, msg);
-        udp_flag = 0;
-    }
+//     if(udp_flag == 1){
+//         char msg[MAX_MSG_LENGTH];
+//         memset(msg, 0, sizeof(msg));
+//         sprintf(msg, "%s %s\n", unreg_str, personal->persn_info->network);
+//         send_udp(personal, msg);
+//         udp_flag = 0;
+//     }
     
-    int i = 0;
-    for (i = 3; i <= personal->max_fd; i++) {
-        if (FD_ISSET(i, &personal->crr_scks)) {
-            FD_CLR(i, &personal->crr_scks);
-            close(i);
-        }
-    }
+//     int i = 0;
+//     for (i = 3; i <= personal->max_fd; i++) {
+//         if (FD_ISSET(i, &personal->crr_scks)) {
+//             FD_CLR(i, &personal->crr_scks);
+//             close(i);
+//         }
+//     }
 
-    strcpy(personal->persn_info->network, "");
-    personal = reset_personal(personal);
-    server_on = 0;
-    return 0;
-}//leave
+//     strcpy(personal->persn_info->network, "");
+//     personal = reset_personal(personal);
+//     server_on = 0;
+//     return 0;
+// }//leave
 
 void help_menu() {
         printf("*****************HELP MENU*****************\n\n");

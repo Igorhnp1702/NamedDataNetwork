@@ -28,12 +28,12 @@
 #include <arpa/inet.h>
 #include <signal.h>
 
+
 // project libraries
 #include "ndn_messages.h"
 
- char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net){ // register the node
 
-    int success = 0;
+ char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net){ // register the nod    
 
     struct addrinfo srv_criteria, *srv_result;
     int fd, errflag;
@@ -41,8 +41,8 @@
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
     char *buffer = (char*)calloc(6, sizeof(char)); // OKREG (5) + \0 (1) = 6
-    char *reg_msg[69]; // 5(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
-    memset(reg_msg, "\0", 69);
+    char reg_msg[69]; // 5(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
+    memset(reg_msg, 0, 69*sizeof(char));
 
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
     if(fd == -1) return NULL;
@@ -56,7 +56,7 @@
 
     sprintf(reg_msg, "%s %s %s %s\n", reg_str, net, node_IP, node_TCP);
 
-    cnt = sendto(fd, reg_msg, strlen(reg_msg), 0, srv_result->ai_addr, srv_result->ai_addrlen);
+    cnt = sendto(fd, reg_msg, strlen(reg_msg), 0, srv_result->ai_addr, srv_result->ai_addrlen); // Send reg
     if(cnt == -1) return NULL;
 
     printf("Registration request sent to the node server: %s\n\n", reg_msg);
@@ -64,9 +64,15 @@
     freeaddrinfo(srv_result);
 
     addrlen_conf = sizeof(struct sockaddr_in);
-    cnt = recvfrom(fd, buffer, 6, 0,(struct sockaddr *)&addr_conf, &addrlen_conf); // retrieve the same 6 bytes you allocated for the response
-    if(cnt == -1) return NULL;
+    cnt = recvfrom(fd, buffer, strlen(okreg_str)+1, 0,(struct sockaddr *)&addr_conf, &addrlen_conf); // recieve okreg
+    if(cnt == -1){
+        printf("Error in node_reg: Failed to receive confirmation from the server\n");
+        return NULL;
+    }
+     
     buffer[cnt] = '\0';
+
+    printf("Response from the node server: %s\n", buffer);
 
     if (strcmp(inet_ntoa(addr_conf.sin_addr), server_IP) != 0) { //Verification
         strcpy(buffer, "0");
@@ -76,9 +82,7 @@
     return buffer;
  }
 
- char *node_unreg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net){ // unregister the node
-
-    int success = 0;
+ char *node_unreg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net){ // unregister the node    
 
     struct addrinfo srv_criteria, *srv_result;
     int fd, errflag;
@@ -86,8 +90,8 @@
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
     char *buffer = (char*)calloc(6, sizeof(char)); // OKREG (5) + \0 (1) = 6
-    char *unreg_msg[71]; // 7(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
-    memset(unreg_msg, "\0", 71);
+    char unreg_msg[71]; // 7(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
+    memset(unreg_msg, 0, 71*sizeof(char));
 
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
     if(fd == -1) return NULL;
@@ -109,9 +113,14 @@
     freeaddrinfo(srv_result);
 
     addrlen_conf = sizeof(struct sockaddr_in);
-    cnt = recvfrom(fd, buffer, 6, 0,(struct sockaddr *)&addr_conf, &addrlen_conf); // retrieve the same 6 bytes you allocated for the response
-    if(cnt == -1) return NULL;
+    cnt = recvfrom(fd, buffer, strlen(okunreg_str)+1, 0,(struct sockaddr *)&addr_conf, &addrlen_conf); // retrieve the same 6 bytes you allocated for the response
+    if(cnt == -1){
+        printf("Error in node_reg: Failed to receive confirmation from the server\n");
+        return NULL;
+    } 
     buffer[cnt] = '\0';
+
+    printf("Response from the node server: %s\n", buffer);
 
     if (strcmp(inet_ntoa(addr_conf.sin_addr), server_IP) != 0) { //Verification
         strcpy(buffer, "0");
@@ -130,8 +139,8 @@ char *server_inquiry(char *server_IP, char *server_UDP, char *net){// request th
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
     char *buffer = (char*)calloc(MAX_NODESLIST, sizeof(char));
-    char *inquiry[11]; // 5(nodes) + 1(space) + 3(net) + 1(\n) + 1(\0) = 11 
-    memset(inquiry, "\0", 11);
+    char inquiry[11]; // 5(nodes) + 1(space) + 3(net) + 1(\n) + 1(\0) = 11 
+    memset(inquiry, 0, 11*sizeof(char));
 
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
     if(fd == -1) return NULL;
@@ -154,7 +163,11 @@ char *server_inquiry(char *server_IP, char *server_UDP, char *net){// request th
 
     addrlen_conf = sizeof(struct sockaddr_in);
     cnt = recvfrom(fd, buffer, MAX_NODESLIST, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
-    if(cnt == -1) return NULL;
+    if(cnt == -1){
+        printf("Failed to get the list of nodes from the server\n");
+        return NULL;
+    }
+    
     buffer[cnt] = '\0';
 
     if (strcmp(inet_ntoa(addr_conf.sin_addr), server_IP) != 0) { //Verification
@@ -165,9 +178,9 @@ char *server_inquiry(char *server_IP, char *server_UDP, char *net){// request th
     return buffer;
 }
 
-char *send_retrieve(){
+// char *send_retrieve(){
 
-}
+// }
 
 char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char *dest_tcp){
     
@@ -269,13 +282,13 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
 }
 
 
-char *send_object(){
+// char *send_object(){
 
-}
+// }
 
-char *send_noobject(){
+// char *send_noobject(){
     
-}
+// }
 
 int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
@@ -299,26 +312,21 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
     char snd_cmd[MAX_MSG_CMD_SIZE];     //the message command of our response 
     memset(snd_cmd, 0, sizeof(snd_cmd));
 
-    char *rcv_msg = NULL; //reaction to our response, needs to be freed after use
-
-    int i = 0;          //iterator
-               
-    int fd_gateway;     // variable to store the file descriptor to use
+    char *return_msg = NULL; //reaction to our response, needs to be freed after use              
 
     nodeinfo_t *new_internal;
 
-    
-    
+    nodesLinkedlist_t *aux;
 
     //get commnand
     if (sscanf(msg, "%s", cmd) != 1) {
-        printf("Error in rcv_tcp: Failed to read command\n");
+        printf("Error in parse_tcp: Failed to read message type\n");
         return ++success_flag;
     }
 
     //try to read and execute command
 
-    if(strcmp(cmd, interest_str) == 0){
+    if(strcmp(cmd, interest_msg_str) == 0){
 
         if(sscanf(msg, "%*s %s",object_buff) == 1){
             
@@ -331,7 +339,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
             // object not in cach and you have no other neighbors, send noobject message to the source
         }else{
         
-            printf("Error in rcv_tcp: Failed to read arguments of %s\n", cmd);
+            printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
             return ++success_flag;
         }                       
             
@@ -346,7 +354,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
             // if someone is waiting for the object, send object message to that node and place the object in cache
 
         }else{
-            printf("Error in rcv_tcp: Failed to read arguments of %s\n", cmd);
+            printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
             return ++success_flag;
         }
     }
@@ -360,7 +368,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
             // if someone is waiting for the object, send noobject message to that node
 
         }else {
-            printf("Error in rcv_tcp: Failed to read arguments of %s\n", cmd);
+            printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
             return ++success_flag;
         }
     }
@@ -382,6 +390,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
             }
             else {
                 
+                new_internal = NULL;
                 new_internal = contact_init(new_internal);
                 strcpy(new_internal->network, slf_node->persn_info->network);
                 strcpy(new_internal->node_addr, tcp_cmd);
@@ -393,22 +402,22 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
             //sprintf(snd_msg, "%s %s %s %s\n", e_str, slf_node->extern_node->node_id,slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
             
             printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-            rcv_msg = send_safe(src_fd, ip_cmd, tcp_cmd);
+            return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
             
-            if (strcmp(rcv_msg, "1") == 0) {
+            if (strcmp(return_msg, "1") == 0) {
                 printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
                 printf("%s\n", snd_msg);
-                if (rcv_msg != NULL){ //reset the pointer to the received message
-                    free(rcv_msg);
-                    rcv_msg = NULL;
+                if (return_msg != NULL){ //reset the pointer to the received message
+                    free(return_msg);
+                    return_msg = NULL;
                     return success_flag;
                 }                                
             }
             else{
                 printf("Error in rcv_tcp: Communication with TCP server failed.\n");
-                if (rcv_msg != NULL) { //reset the pointer to the received message
-                    free(rcv_msg);
-                    rcv_msg = NULL;
+                if (return_msg != NULL) { //reset the pointer to the received message
+                    free(return_msg);
+                    return_msg = NULL;
                 }
                 return ++success_flag;                        
             }
@@ -431,17 +440,28 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                  
             }            
             else{// who is the intern neighbor that sent me the message?
-                for(i = 0; i < MAX_INTERNALS; i++){
-                    
-                    if(slf_node->internals_array[i] != NULL){
-                        if(*src_fd == slf_node->internals_array[i]->node_fd){
-                                                    
-                            printf("\nMessage received from %s | %s:\n", slf_node->internals_array[i]->node_addr, slf_node->internals_array[i]->tcp_port);
-                            printf("%s\n", msg);                                                                        
-                            break;
-                        }
+                
+                aux = slf_node->internals_list;
+                while(aux != NULL){
+                            
+                    if(aux->node->node_fd == *src_fd){
+                        printf("Internal node disconected: %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
+                        break;
                     }
-                }
+                    aux = aux->next;
+                }  
+                
+                // for(i = 0; i < MAX_INTERNALS; i++){
+                    
+                //     if(slf_node->internals_array[i] != NULL){
+                //         if(*src_fd == slf_node->internals_array[i]->node_fd){
+                                                    
+                //             printf("\nMessage received from %s | %s:\n", slf_node->internals_array[i]->node_addr, slf_node->internals_array[i]->tcp_port);
+                //             printf("%s\n", msg);                                                                        
+                //             break;
+                //         }
+                //     }
+                // }
             }        
 
             printf("Updating the backup neighbor...\n\n");
@@ -473,9 +493,9 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
         return ++success_flag;
     }
 
-    if (rcv_msg != NULL) {
-        free(rcv_msg);
-        rcv_msg = NULL;
+    if (return_msg != NULL) {
+        free(return_msg);
+        return_msg = NULL;
     }
     return success_flag;
 }

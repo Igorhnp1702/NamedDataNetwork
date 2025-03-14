@@ -14,8 +14,6 @@
 
 
 
-#define MAX_INTERNALS 99
-
 
 /**************************************************************************
  * nodeinfo_t
@@ -36,7 +34,7 @@ typedef struct any_node{
 char *network;   // index of the network; integer from 000 to 999
 char *tcp_port;  // tcp port of the node; integer from 0 to 65 536   
 char *node_addr; // IPv4 address with undefined size
-int  *node_fd;   // the file descriptor assigned to this node
+int  node_fd;   // the file descriptor assigned to this node
 char *node_buff; // buffer to store unfinished mesages
 } nodeinfo_t;
 
@@ -111,7 +109,8 @@ struct personal_node *personal_init(struct personal_node *personal);
  *
  *  Description:
  *
- *  -Allocate memory to store the contact of the node
+ *  -Allocate memory to store the contact of the node IN THE NODE'S MEMBERS
+ *  -Please call the calloc function to allocate memory to the node itself
  *
  *  Arguments:
  *
@@ -171,7 +170,7 @@ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src);
 
 nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node);
 
-nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head);
+nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head); //-Please call the calloc function to allocate memory to the node itself
 
 nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd);
 
