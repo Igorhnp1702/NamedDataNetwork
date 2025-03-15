@@ -74,6 +74,8 @@ struct personal_node{
 
 nodeinfo_t *persn_info;             // contact of the personal node
 int anchorflag;                     // flag that says whether the node is an anchor or not (anchor = backup to itself)
+int network_flag;
+int join_flag;
 int n_internals;                    // counter for the number of internal neighbors
 int max_fd;                         // the maximum integer assigned to a file descriptor in this node's FD set
 int client_fd;                      // file descriptor to communicate with the extern node
@@ -85,7 +87,6 @@ fd_set crr_scks;                    // set of file descriptors in use (crr = cur
 //objectQueue_t *queue_ptr;           // double linked list of the contents of the node
 nodeinfo_t *extern_node;            // contact of the extern neighbor node
 nodeinfo_t *backup_node;            // contact of the backup neighbor node
-nodeinfo_t **internals_array;       // array of contacts of internal neighbors. 
 nodesLinkedlist_t *internals_list; // list of contacts of internal neighbors
 };
 
@@ -174,6 +175,6 @@ nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head); //-Please call the calloc 
 
 nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd);
 
-
+nodesLinkedlist_t *clearlist(nodesLinkedlist_t *head);
 
 #endif

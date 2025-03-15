@@ -53,3 +53,8 @@ val:
 	valgrind --leak-check=full --show-leak-kinds=all -s ./ndn $(ARG1) $(ARG2) $(ARG3) $(ARG4) $(ARG5)
 
 # To provide arguments with make val, type ARG1=[first arg] ARG2=[second arg] and so on, without spaces
+
+# Some program calls:
+
+# ./ndn 10 127.0.0.1 51000 
+# ./ndn 10 193.236.216.177 51000

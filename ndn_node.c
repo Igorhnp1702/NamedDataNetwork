@@ -34,9 +34,11 @@
 
 
 nodeinfo_t *contact_init(nodeinfo_t *contact){
-
     
-
+    // initialize with NULL before calling this function
+    
+    contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t));
+    
     /* initializing positive integer variables to -1 */
           
     if((contact->network = (char*)calloc(MAX_NET_CHARS, sizeof(char))) == NULL ||      // integer from 000 to 999
@@ -55,11 +57,16 @@ nodeinfo_t *contact_init(nodeinfo_t *contact){
 
 struct personal_node *personal_init(struct personal_node *personal){
 
-    personal = (struct personal_node*)calloc(1, sizeof(struct personal_node));
+    if((personal = (struct personal_node*)calloc(1, sizeof(struct personal_node))) == NULL){
+        printf("Error in personal_init: Failed to allocate memory. Process terminated\n");
+        exit(1);
+    }
 
     personal->persn_info = contact_init(personal->persn_info);
 
     personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
+    personal->network_flag = 0;
+    personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
     personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
     personal->client_fd = -1;   // file descriptor for a client node  
@@ -74,7 +81,7 @@ struct personal_node *personal_init(struct personal_node *personal){
             
     //init neighbors list
 
-    personal->internals_list = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t));
+    personal->internals_list = NULL;
     Listinit(personal->internals_list);
     
     return personal;
@@ -107,6 +114,8 @@ struct personal_node *reset_personal(struct personal_node *personal){
         free_contact(aux2->node);
         free(aux2);
     }
+
+    personal->internals_list = clearlist(personal->internals_list);
     
     /*clear extern and backup nodes*/
     if (personal->extern_node != NULL){        
@@ -120,6 +129,8 @@ struct personal_node *reset_personal(struct personal_node *personal){
     }
 
     personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
+    personal->network_flag = 0;
+    personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
     personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
     personal->client_fd = -1;   // file descriptor for a client node
@@ -146,42 +157,47 @@ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
 }//contact_copy()
 
 nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head){
-
     
-    if((head->node = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t))) == NULL){
-        printf("Error in Listinit: Failed to allocate memory for a node list. Process terminated\n");
-        return NULL;
-    } 
+    // if((head = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t))) == NULL){
+    //     printf("Error in Listinit: calloc failed. Process terminated");
+    //     exit(1);
+    // }    
     
-    contact_init(head->node);
-    head->next = NULL;
+    // head->node = NULL;             
     
-
+    // head->node = contact_init(head->node);
+    // head->next = NULL;
+    
+    head = NULL;
     return head;
 
 }
 
 nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
-
-    // Check if the list is initialized
-
-    if(head == NULL){
-        printf("Error in insertnode: list is not initialized");
-        return NULL;
-    }
-    
+        
     nodesLinkedlist_t *aux, *new_block;    
 
     // Write the info in memory
 
     if((new_block = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t))) == NULL){
+        
         printf("Error in insertnode: Failed to allocate memory");
-        return NULL;
+        exit(1);
     }
-    new_block->node = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t));
-    contact_init(new_block->node);
-    contact_copy(new_block->node, new_node);
+    // if((new_block->node = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t))) == NULL){
+        
+    //     printf("Error in insertnode: Failed to allocate memory: process terminated");
+    //     exit(1);
+    // }
+    // contact_init(new_block->node);
+    // contact_copy(new_block->node, new_node);
+    new_block->node = new_node;
     new_block->next = NULL;
+
+    if(head == NULL){
+        head = new_block;
+        return head;
+    }
 
     // Go through the list and insert at the end
 
@@ -192,7 +208,7 @@ nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
     }
 
     aux->next = new_block;
-    printf("Successfully inserted %s | %s in the neighbor list\n", new_node->node_addr, new_node->tcp_port);
+    printf("\nSuccessfully inserted %s | %s in a list\n", new_node->node_addr, new_node->tcp_port);
     return head;
 
 }
@@ -253,4 +269,22 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 		else listptr = listptr->next;
 	}
 	return head;
+}
+
+nodesLinkedlist_t *clearlist(nodesLinkedlist_t* head){
+
+    nodesLinkedlist_t *aux1, *aux2;
+
+    /* clear the memory for the internal nodes */
+
+    aux1 = head;
+    
+    while(aux1 != NULL){
+        aux2 = aux1;
+        aux1 = aux1->next;
+        free_contact(aux2->node);
+        free(aux2);
+    }
+    head = NULL;
+    return head;
 }

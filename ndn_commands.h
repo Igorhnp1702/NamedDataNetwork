@@ -112,7 +112,7 @@ int join(struct personal_node *personal, char *net);
  *
  * Return: 0 on success; 1 on failure;
  **************************************************************/
- int djoin(struct personal_node *personal, char *net, char *connectIP, char *connectTCP);
+ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP);
 
 // /***************************************************************
 //  * create()
@@ -236,7 +236,7 @@ int show_topology(struct personal_node *personal);
  *
  * Return: 0 on success; 1 on failure;
  **************************************************************/
-//int leave(struct personal_node *personal);
+int leave(struct personal_node *personal);
 
 /***************************************************************
  * help_menu()

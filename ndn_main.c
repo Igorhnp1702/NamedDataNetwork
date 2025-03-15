@@ -179,8 +179,8 @@ int main(int argc, char **argv){
 
     socklen_t srv_addrlen;        // size of the personal IPv4 address
     struct sockaddr srv_addr;     // the IPv4 address
+    
     // Start the event loop
-
       
     int select_ctrl;
     int fd_itr = 0;              // an iterator to go through the FD set
@@ -195,15 +195,13 @@ int main(int argc, char **argv){
 
     char *ptr_bffr;              // pointer to buffer, to use with read operation;
         
-    FD_ZERO(&my_node->crr_scks);                              // Set set of FD's to zero
+    FD_ZERO(&my_node->crr_scks);                              // Set the set of FD's to zero
     FD_SET(STDIN_FILENO, &my_node->crr_scks);                 // add stdin(keyboard input) to FD set    
 
     // Infinite cycle where the communications happen
 
     while (1) {
-    
-        printf("\nChecking activity...\n\n");
-        
+                    
         //In case old external neigbor disconnected, add new one to FD set
         if ((my_node->client_fd != -1) && (!FD_ISSET(my_node->client_fd, &my_node->crr_scks))) {
             FD_SET(my_node->client_fd, &my_node->crr_scks);
@@ -213,12 +211,13 @@ int main(int argc, char **argv){
         //remove all FDs with no activity from FD set my_node->rdy_scks
         my_node->rdy_scks = my_node->crr_scks;
     
+        printf("\nWaiting for activity activity...\n\n");
         select_ctrl = select(my_node->max_fd + 1, &my_node->rdy_scks, (fd_set*)NULL, (fd_set*)NULL, (struct timeval*)NULL);
+
 
         if (select_ctrl < 0) {         
             printf("Error in select: %s.\nProcess terminated\n", strerror(errno));
-            //leave(my_node);        
-            free(my_node->internals_array);
+            leave(my_node);                    
             free_contact(my_node->persn_info);
 
             // if(my_node->queue_ptr != NULL){
@@ -241,10 +240,12 @@ int main(int argc, char **argv){
             exit(1);                
         }
         
-        //Go through all FDs and see which ones have activity
-        for (fd_itr = 0; fd_itr < my_node->max_fd + 1; fd_itr++) {
+        printf("Activity found\n");
 
-            if (FD_ISSET(fd_itr, &my_node->rdy_scks)) {
+        //Go through all FDs and see which ones have activity
+        for (fd_itr = 0; fd_itr < my_node->max_fd + 1; fd_itr++){
+
+            if(FD_ISSET(fd_itr, &my_node->rdy_scks)){
                 
                 // read and process user input
                 if (fd_itr == STDIN_FILENO) {
@@ -274,7 +275,7 @@ int main(int argc, char **argv){
 
                 // read a message from a node
                 
-                else {
+                else{
                     memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'
                     ptr_bffr = buffer;
                     nleft = MAX_MSG_LENGTH;     //last byte needs to be free for '\0'
@@ -371,8 +372,7 @@ int main(int argc, char **argv){
                                 memset(my_node->backup_node->network, 0, 4 * sizeof(*my_node->backup_node->network));
                                 memset(my_node->backup_node->tcp_port, 0, 6 * sizeof(*my_node->backup_node->tcp_port));
                                 memset(my_node->backup_node->node_addr, 0, MAX_ADDRESS_SIZE * sizeof(*my_node->backup_node->node_addr));
-                                memset(my_node->backup_node->node_buff, 0, MAX_MSG_LENGTH * sizeof(*my_node->backup_node->node_buff));
-                                my_node->extern_node->node_fd = -1;                                
+                                memset(my_node->backup_node->node_buff, 0, MAX_MSG_LENGTH * sizeof(*my_node->backup_node->node_buff));                                
                                 
                             }
                             
@@ -406,10 +406,10 @@ int main(int argc, char **argv){
                             printf("Error in main: failed to parse a message\n");
                         }
                     }//else                    
-                }//else
-            }//if
-        }//for
-    }//while    
+                }//else (read a message from a node)
+            }//if(fdisset)
+        }//for(fd_itr)
+    }//while(1)    
 }//main()
 
    

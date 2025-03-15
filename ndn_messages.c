@@ -40,7 +40,12 @@
     ssize_t cnt;
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
-    char *buffer = (char*)calloc(6, sizeof(char)); // OKREG (5) + \0 (1) = 6
+    char *buffer = NULL;
+    if((buffer = (char*)calloc(strlen(okreg_str) + 1, sizeof(char))) == NULL){
+        printf("Error in send_safe: Failed to allocate memory. process terminated\n");
+        exit(1);
+    }
+    // OKREG (5) + \0 (1) = 6
     char reg_msg[69]; // 5(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
     memset(reg_msg, 0, 69*sizeof(char));
 
@@ -89,7 +94,12 @@
     ssize_t cnt;
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
-    char *buffer = (char*)calloc(6, sizeof(char)); // OKREG (5) + \0 (1) = 6
+    char *buffer = NULL;
+    if((buffer = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
+        printf("Error in send_safe: Failed to allocate memory. process terminated\n");
+        exit(1);
+    }
+    // OKUNREG (5) + \0 (1) = 6
     char unreg_msg[71]; // 7(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
     memset(unreg_msg, 0, 71*sizeof(char));
 
@@ -138,7 +148,11 @@ char *server_inquiry(char *server_IP, char *server_UDP, char *net){// request th
     ssize_t cnt;
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
-    char *buffer = (char*)calloc(MAX_NODESLIST, sizeof(char));
+    char *buffer = NULL;
+    if((buffer = (char*)calloc(MAX_NODESLIST, sizeof(char))) == NULL){
+        printf("Error in send_safe: Failed to allocate memory. process terminated\n");
+        exit(1);
+    }
     char inquiry[11]; // 5(nodes) + 1(space) + 3(net) + 1(\n) + 1(\0) = 11 
     memset(inquiry, 0, 11*sizeof(char));
 
@@ -188,7 +202,11 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
     int errflag;
     ssize_t nbytes, nleft, nwritten;
     char *ptr;
-    char *buffer = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));
+    char *buffer = NULL;
+    if((buffer = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
+        printf("Error in send_safe: Failed to allocate memory. process terminated\n");
+        exit(1);
+    }
     struct sigaction act;
 
     struct timeval timeout;
@@ -222,9 +240,10 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
             return NULL;
         }
 
+        errno = 0;
         errflag = connect(*fd, srv_result->ai_addr, srv_result->ai_addrlen);
         if(errflag == -1){
-            printf("Send entry: Error in connect()\n");
+            printf("Send entry: Error in connect(): %s\n", strerror(errno));            
             return NULL;
         }
 
@@ -256,7 +275,11 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
 char *send_safe(int fd, char *ext_ip, char *ext_tcp){
 
     char *ptr;
-    char *buffer = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));
+    char *buffer = NULL;
+    if((buffer = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
+        printf("Error in send_safe: Failed to allocate memory. process terminated\n");
+        exit(1);
+    }
     ssize_t nbytes, nleft, nwritten;
 
     sprintf(buffer, "%s %s %s\n", safe_str, ext_ip, ext_tcp);
@@ -294,25 +317,25 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
     int success_flag = 0;
 
-    char cmd[MAX_MSG_CMD_SIZE];     //message command of msg
+    char cmd[MAX_MSG_CMD_SIZE];         //message command of msg
     memset(cmd, 0, sizeof(cmd));    
         
     char tcp_cmd[MAX_TCP_UDP_CHARS];    //tcp port of msg
     memset(tcp_cmd, 0, sizeof(tcp_cmd));
 
-    char ip_cmd[MAX_ADDRESS_SIZE];    //ip address of msg
+    char ip_cmd[MAX_ADDRESS_SIZE];      //ip address of msg
     memset(ip_cmd, 0, sizeof(ip_cmd));
 
-    char object_buff[MAX_OBJECT_NAME];  //content of msg
+    char object_buff[MAX_OBJECT_NAME];  //object of msg
     memset(object_buff, 0, sizeof(object_buff));
 
-    char snd_msg[MAX_MSG_LENGTH];    //buffer to send a response 
+    char snd_msg[MAX_MSG_LENGTH];       //buffer to send a response 
     memset(snd_msg, 0, sizeof(snd_msg));
 
     char snd_cmd[MAX_MSG_CMD_SIZE];     //the message command of our response 
     memset(snd_cmd, 0, sizeof(snd_cmd));
 
-    char *return_msg = NULL; //reaction to our response, needs to be freed after use              
+    char *return_msg = NULL;            //return from all the send commands
 
     nodeinfo_t *new_internal;
 
@@ -363,7 +386,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
         if(sscanf(msg, "%*s %s",object_buff) == 1){
             
-             // check interest table to see if someone is waiting for an answer from me           
+            // check interest table to see if someone is waiting for an answer from me           
 
             // if someone is waiting for the object, send noobject message to that node
 
@@ -375,18 +398,63 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
        
     else if (strcmp(cmd, entry_str) == 0) {
 
-        if (sscanf(msg, "%*s %s %s",ip_cmd, tcp_cmd) == 3){
+        if (sscanf(msg, "%*s %s %s", ip_cmd, tcp_cmd) == 3){
             
             printf("\nMessage received from a new intern neighbor:\n");
             printf("%s\n", msg);
 
-            if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //Only node in the network
+            if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network answer with SAFE, followed by an ENTRY
 
                 strcpy(slf_node->extern_node->network, slf_node->persn_info->network);                
                 strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
                 strcpy(slf_node->extern_node->node_addr, ip_cmd);
                 slf_node->client_fd = *src_fd;
                 slf_node->anchorflag = 1; 
+
+                printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
+                
+                if (strcmp(return_msg, "1") == 0) {
+
+                    printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
+                    printf("%s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                    if (return_msg != NULL){ //reset the pointer to the received message
+                        free(return_msg);
+                        return_msg = NULL;                        
+                    }                                
+                }
+                else{
+                    printf("Error in parse_tcp: Communication with new intern failed.\n");
+                    if (return_msg != NULL) { //reset the pointer to the received message
+                        free(return_msg);
+                        return_msg = NULL;
+                    }
+                    return ++success_flag;                        
+                }
+
+                printf("Sending %s %s %s\n", entry_str, slf_node->persn_info->node_addr, slf_node->persn_info->tcp_port);
+                
+                return_msg = send_entry(src_fd, slf_node->persn_info->node_addr, slf_node->persn_info->tcp_port,
+                                        ip_cmd, tcp_cmd);
+                
+                if (strcmp(return_msg, "1") == 0) {
+
+                    printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
+                    printf("%s %s %s\n", entry_str, slf_node->persn_info->node_addr, slf_node->persn_info->tcp_port);
+                    if (return_msg != NULL){ //reset the pointer to the received message
+                        free(return_msg);
+                        return_msg = NULL;                        
+                    }                                
+                }
+                else{
+                    printf("Error in parse_tcp: Communication with new intern failed.\n");
+                    if (return_msg != NULL) { //reset the pointer to the received message
+                        free(return_msg);
+                        return_msg = NULL;
+                    }
+                    return ++success_flag;                        
+                }
+
             }
             else {
                 
@@ -397,33 +465,32 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 strcpy(new_internal->node_addr, ip_cmd);
                 new_internal->node_fd = *src_fd;
 
-                insertnode(slf_node->internals_list, new_internal);                                
-            }
-            //sprintf(snd_msg, "%s %s %s %s\n", e_str, slf_node->extern_node->node_id,slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-            
-            printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-            return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
-            
-            if (strcmp(return_msg, "1") == 0) {
-                printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
-                printf("%s\n", snd_msg);
-                if (return_msg != NULL){ //reset the pointer to the received message
-                    free(return_msg);
-                    return_msg = NULL;
-                    return success_flag;
-                }                                
-            }
-            else{
-                printf("Error in rcv_tcp: Communication with TCP server failed.\n");
-                if (return_msg != NULL) { //reset the pointer to the received message
-                    free(return_msg);
-                    return_msg = NULL;
+                slf_node->internals_list = insertnode(slf_node->internals_list, new_internal);
+                
+                printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
+                
+                if (strcmp(return_msg, "1") == 0) {
+                    printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
+                    printf("%s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                    if (return_msg != NULL){ //reset the pointer to the received message
+                        free(return_msg);
+                        return_msg = NULL;
+                        return success_flag;
+                    }                                
                 }
-                return ++success_flag;                        
-            }
+                else{
+                    printf("Error in parse_tcp: Communication with TCP server failed.\n");
+                    if (return_msg != NULL) { //reset the pointer to the received message
+                        free(return_msg);
+                        return_msg = NULL;
+                    }
+                    return ++success_flag;                        
+                }
+            }                        
         }
         else {
-            printf("Error in rcv_tcp: Failed to read arguments of %s\n", cmd);
+            printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
             return ++success_flag;
         }
     }
@@ -439,7 +506,9 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 printf("%s\n", msg);
                  
             }            
-            else{// who is the intern neighbor that sent me the message?
+            else{
+                // entrance of the 2nd node, while im the first (beginning of the list) or
+                // anchor node disappeared, while im the other anchor, and I had to choose someone to be the 2nd anchor (anywhere in the list)
                 
                 aux = slf_node->internals_list;
                 while(aux != NULL){
