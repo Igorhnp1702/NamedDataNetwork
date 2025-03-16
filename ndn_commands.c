@@ -258,10 +258,12 @@ void select_cmd(struct personal_node *personal, char *input){
         // reset the struct in order to give the possibility to join or djoin again
 
         printf("Executing %s...\n\n", leave_str);
-        if(strcmp(personal->persn_info->network, "") == 0){
+        if(personal->network_flag == 0){
             printf("The node is already without a network.\n");
+            return;
         }
-        //leave(personal);
+        leave(personal);
+        return;
 
     }//else if leave or l
 
@@ -558,7 +560,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
     printf("Your node has the following info:\n\n");
     personal->network_flag = 1;
     
-    if(personal->network_flag == 1){
+    if(personal->join_flag == 1){
         printf("Network: %s\nAdress: %s\nPort: %s\n",       
         personal->persn_info->network,
         personal->persn_info->node_addr, 
@@ -819,26 +821,33 @@ int show_topology(struct personal_node *personal){
 
 int leave(struct personal_node *personal) {
     
-    if(personal->network_flag == 0){        
-        //personal = reset_personal(personal);
-        int i = 0;
-        for (i = 3; i <= personal->max_fd; i++) {
-            if (FD_ISSET(i, &personal->crr_scks)) {
-                FD_CLR(i, &personal->crr_scks);
-                close(i);
-            }
-        }        
-        personal = reset_personal(personal); 
-            return 1;
-    }
+    // if(personal->network_flag == 0){        
+    //     //personal = reset_personal(personal);
+    //     int i = 0;
+    //     for (i = 3; i <= personal->max_fd; i++) {
+    //         if (FD_ISSET(i, &personal->crr_scks)) {
+    //             FD_CLR(i, &personal->crr_scks);
+    //             close(i);
+    //         }
+    //     }        
+    //     personal = reset_personal(personal); 
+    //     return 1;
+    // }    
     
     if(personal->join_flag == 1){
-        node_unreg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, 
-                   personal->persn_info->tcp_port, personal->persn_info->network);
+        if ((node_unreg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, 
+            personal->persn_info->tcp_port, personal->persn_info->network)) == NULL){
+
+            printf("Error in leave: Failed to unregister the node. The connections are still open.\n");
+            return 1;
+
+        }
+        // check return value of node_unreg
         personal->join_flag = 0;
         strcpy(personal->persn_info->network, "");
     }
     
+    // close connections 
     int i = 0;
     for (i = 3; i <= personal->max_fd; i++) {
         if (FD_ISSET(i, &personal->crr_scks)) {
@@ -847,7 +856,8 @@ int leave(struct personal_node *personal) {
         }
     }
     personal->network_flag = 0;    
-    personal = reset_personal(personal);    
+    personal = reset_personal(personal);
+    printf("leave executed successfully\n");
     return 0;
 }//leave
 
@@ -856,7 +866,7 @@ void help_menu() {
         printf("To use the application, insert one of the following commands:\n");
         printf("Note: curved brackets => valid abreviations; square brackets => arguments\n\n");
         printf("join (j) [desired network] \n");
-        printf("direct join (dj) [desired network] [connect IPv4 address] [connect TCP port]\n");        
+        printf("direct join (dj) [connect IPv4 address] [connect TCP port]\n");        
         // printf("create (c) [name]\n");
         // printf("delete (dl) [name]\n");
         // printf("retrieve (r) [name]\n");

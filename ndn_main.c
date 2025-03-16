@@ -160,8 +160,7 @@ int main(int argc, char **argv){
     
     printf("The application was launched successfuly\n\n");
     printf("\nType 'help' to show this help menu.\n\n");
-    help_menu();    
-    printf("\nIf the program stopped, it's waiting for activity:\n");    
+    help_menu();            
     printf("\n_________________________________________________________________\n\n");    
     
     
@@ -211,7 +210,7 @@ int main(int argc, char **argv){
         //remove all FDs with no activity from FD set my_node->rdy_scks
         my_node->rdy_scks = my_node->crr_scks;
     
-        printf("\nWaiting for activity activity...\n\n");
+        printf("\nWaiting for activity...\n\n");
         select_ctrl = select(my_node->max_fd + 1, &my_node->rdy_scks, (fd_set*)NULL, (fd_set*)NULL, (struct timeval*)NULL);
 
 
@@ -303,12 +302,16 @@ int main(int argc, char **argv){
                             
                             my_node->client_fd = -1;   // Reset client_fd to -1                            
                             
-                            if (strcmp(my_node->backup_node->node_addr, my_node->persn_info->node_addr) != 0) { //not an anchor                                                        
+                            if (my_node->anchorflag == 0) { //not an anchor                                                        
                                 
                                 memset(msg, 0, sizeof(msg));
                                 printf("Sending %s %s %s\n", entry_str, my_node->persn_info->node_addr, my_node->persn_info->tcp_port);
                                 //Sends ENTRY message , receives SAFE response and updates backup node
                                 
+
+                                // The send_entry function has to wait for the safe message to come
+                                // It does not make sense to send safe message to other nodes when my extern node is not fully updated
+
                                 if(strcmp(send_entry(&(my_node->client_fd), my_node->persn_info->node_addr, my_node->persn_info->tcp_port,
                                               my_node->backup_node->node_addr, my_node->backup_node->tcp_port), "1") != 0){
                                     printf("Failed to send a message\n");
@@ -333,7 +336,7 @@ int main(int argc, char **argv){
                                 }
                                 
                                 if (strcmp(my_node->persn_info->node_addr, my_node->backup_node->node_addr) == 0 &&
-                                    strcmp(my_node->persn_info->node_addr, my_node->backup_node->tcp_port) == 0) {
+                                    strcmp(my_node->persn_info->tcp_port, my_node->backup_node->tcp_port) == 0) {
                                     
                                     my_node->anchorflag = 1;
                                 }                            

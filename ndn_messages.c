@@ -209,9 +209,9 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
     }
     struct sigaction act;
 
-    struct timeval timeout;
-    timeout.tv_sec = 5;  // 5-second timeout
-    timeout.tv_usec = 0;
+    // struct timeval timeout;
+    // timeout.tv_sec = 5;  // 5-second timeout
+    // timeout.tv_usec = 0;
     
 
     if (*fd == -1) {
@@ -220,7 +220,7 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
             printf("Send entry: Error initializing socket.\n");
             return NULL;
         }
-        setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        //setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         
         memset(&act, 0, sizeof(act));
         act.sa_handler = SIG_IGN;
