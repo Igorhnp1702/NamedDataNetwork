@@ -37,7 +37,7 @@ nodeinfo_t *contact_init(nodeinfo_t *contact){
     
     // initialize with NULL before calling this function
     
-    if(contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t)) == NULL){
+    if((contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t))) == NULL){
         printf("Error in contact_init: Failed to allocate memory\n");
         exit(1);
     }
@@ -239,7 +239,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 		if(head == NULL){
 			printf("\nThe list of internals is now empty\n\n");
 		}
-        
+
 		return head;			
 	}
 	

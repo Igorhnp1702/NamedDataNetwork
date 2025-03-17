@@ -175,6 +175,8 @@ int main(int argc, char **argv){
     my_node->udp_address = server_addr;
     my_node->udp_port = server_port;
 
+    my_node->extern_node = contact_init(my_node->extern_node);
+
     socklen_t srv_addrlen;        // size of the personal IPv4 address
     struct sockaddr srv_addr;     // the IPv4 address
     
@@ -201,11 +203,12 @@ int main(int argc, char **argv){
     while (1) {
                     
         //In case old external neigbor disconnected, add new one to FD set
+        
         if ((my_node->extern_node->node_fd != -1) && (!FD_ISSET(my_node->extern_node->node_fd, &my_node->crr_scks))) {
             FD_SET(my_node->extern_node->node_fd, &my_node->crr_scks);
             if (my_node->extern_node->node_fd > my_node->max_fd) my_node->max_fd = my_node->extern_node->node_fd;
         }
-
+        
         //remove all FDs with no activity from FD set my_node->rdy_scks
         my_node->rdy_scks = my_node->crr_scks;
     
@@ -357,7 +360,7 @@ int main(int argc, char **argv){
 
                                     // try to get the new backup node
 
-                                    if((parse_tcp(my_node, buffer, my_node->extern_node->node_fd)) == 1 ){
+                                    if((parse_tcp(my_node, buffer, &(my_node->extern_node->node_fd))) == 1 ){
                                         printf("Error in main: Failed to read the new extern node's interface\n");
                                         printf("Connection with new extern was closed\n");            
                                         close(my_node->extern_node->node_fd);
@@ -385,7 +388,7 @@ int main(int argc, char **argv){
                                 }
                                                         
                             }
-                            if (my_node->n_internals > 1) { //has internals beyond the anchor partner
+                            if (my_node->n_internals > 1 && my_node->anchorflag == 1) { //has internals beyond the anchor partner
                                 
                                 if(my_node->anchorflag == 1 && my_node->extern_node->node_fd == -1){ // is an anchor without the partner
 
@@ -405,7 +408,8 @@ int main(int argc, char **argv){
                                         if(strcmp(send_entry(&(my_node->extern_node->node_fd), my_node->personal_addr, my_node->personal_tcp,
                                             my_node->backup_addr, my_node->backup_tcp), "1") != 0){
                                             
-                                            printf("Failed to convert intern into extern. Connection closed.\n");                                            
+                                            printf("Failed to convert intern into extern. Connection closed.\n");
+                                            FD_CLR(aux->node->node_fd, &(my_node->crr_scks));
                                             aux = removenode(aux, aux->node->node_fd); // head = head->next
                                             my_node->n_internals--;
                                             close(my_node->extern_node->node_fd);
@@ -418,6 +422,7 @@ int main(int argc, char **argv){
                                         if((strcmp(send_safe(my_node->extern_node->node_fd, aux->node->node_addr, aux->node->tcp_port), "1")) != 0){
                                             
                                             printf("Failed to convert intern into extern. Connection closed.\n");
+                                            FD_CLR(aux->node->node_fd, &(my_node->crr_scks));
                                             aux = removenode(aux, aux->node->node_fd); // head = head->next
                                             my_node->n_internals--;
                                             close(my_node->extern_node->node_fd);
@@ -444,7 +449,7 @@ int main(int argc, char **argv){
                                     aux = aux->next;
                                 }                                                                
                             }
-                            else {  //is now the only node in the network
+                            if(my_node->n_internals == 0) {  //is now the only node in the network
                                 //my_node->anchorflag = 1;
                                 // clear the external and the backup node
 
@@ -477,8 +482,11 @@ int main(int argc, char **argv){
                             }  
                             // remove him from the list
 
-                            my_node->internals_list = removenode(my_node->internals_list, aux->node->node_fd);
-                            my_node->n_internals--;                            
+                            if(my_node->internals_list != NULL){
+                            
+                                my_node->internals_list = removenode(my_node->internals_list, aux->node->node_fd);
+                                my_node->n_internals--;                            
+                            }
 
                         }                               
                         

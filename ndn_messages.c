@@ -345,6 +345,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
     char *return_msg = NULL;            //return from all the send commands
 
     nodeinfo_t *new_internal;
+    
 
     nodesLinkedlist_t *aux;
 
@@ -412,59 +413,60 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
             if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network answer with SAFE, followed by an ENTRY
 
-                            
-                strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
-                strcpy(slf_node->extern_node->node_addr, ip_cmd);
-                slf_node->client_fd = *src_fd;
-                slf_node->anchorflag = 1; 
+                //new intern
+                new_internal = NULL;
+                new_internal = contact_init(new_internal);
+                strcpy(new_internal->node_addr, tcp_cmd);
+                strcpy(new_internal->node_addr, ip_cmd);
+                new_internal->node_fd = *src_fd;
+
+                slf_node->internals_list = insertnode(slf_node->internals_list, new_internal);
+                slf_node->n_internals++;                                
 
                 printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
                 
-                if (strcmp(return_msg, "1") == 0) {
+                if (return_msg != NULL) {
 
                     printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
                     printf("%s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-                    if (return_msg != NULL){ //reset the pointer to the received message
-                        free(return_msg);
-                        return_msg = NULL;                        
-                    }                                
+                    
+                    free(return_msg);
+                    return_msg = NULL;                        
+                                                   
                 }
                 else{
                     printf("Error in parse_tcp.\n");
                     printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
                     close(*src_fd);
-                    if (return_msg != NULL) { //reset the pointer to the received message
-                        free(return_msg);
-                        return_msg = NULL;
-                    }
+                    FD_CLR(*src_fd, &(slf_node->crr_scks));
                     return ++fail_flag;                        
                 }
 
                 printf("Sending %s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                 
-                return_msg = send_entry(src_fd, slf_node->personal_addr, slf_node->personal_tcp,
+                return_msg = send_entry(&(slf_node->extern_node->node_fd), slf_node->personal_addr, slf_node->personal_tcp,
                                         ip_cmd, tcp_cmd);
                 
-                if (strcmp(return_msg, "1") == 0) {
+                if (return_msg != NULL) {
 
                     printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
                     printf("%s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
-                    if (return_msg != NULL){ //reset the pointer to the received message
-                        free(return_msg);
-                        return_msg = NULL;                        
-                    }                                
+                    
+                    free(return_msg);
+                    return_msg = NULL;                        
+                                                  
                 }
                 else{
                     printf("Error in parse_tcp.\n");
                     printf("Error connecting to new external: Failed to send ENTRY message. Connection closed\n");
                     close(*src_fd);
-                    if (return_msg != NULL) { //reset the pointer to the received message
-                        free(return_msg);
-                        return_msg = NULL;
-                    }
+                    FD_CLR(*src_fd, &(slf_node->crr_scks));
                     return ++fail_flag;                        
                 }
+                strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
+                strcpy(slf_node->extern_node->node_addr, ip_cmd);                
+                slf_node->anchorflag = 1; 
 
             }
             else {
