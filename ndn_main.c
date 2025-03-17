@@ -345,7 +345,7 @@ int main(int argc, char **argv){
 
                                     sscanf(buffer, "%s", msg_type);
                                     if(strcmp(msg_type, safe_str) != 0){
-                                        printf("Error in main: Failed new extern did not send SAFE message\n");
+                                        printf("Error in main: new extern did not send SAFE message\n");
                                         printf("An intern node will be picked to be an anchor with you, if available\n");
                                         printf("Connection with new extern was closed\n");
                                         my_node->anchorflag = 1;            
