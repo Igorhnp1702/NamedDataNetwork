@@ -62,4 +62,6 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp);
 
 int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd);
 
+char *parseNstore(char *msg_bffr, char **node_bffr, int fd);
+
 #endif

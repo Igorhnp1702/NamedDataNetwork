@@ -537,6 +537,8 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
 
         printf("Expecting SAFE\n");
 
+        return_msg = parseNstore(buffer, &(personal->extern_node->node_buff), personal->extern_node->node_fd);
+
         while (((nread = read(personal->extern_node->node_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
             
             if((token = strtok(scan_ptr,delim)) != NULL){ //command found

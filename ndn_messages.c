@@ -572,7 +572,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
     return fail_flag;
 }
 
-char *parseNstore(char *msg_bffr, char *node_bffr, int fd){
+char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
 
     ssize_t bytes_read;               // number of bytes read from a read operation
     ssize_t bytes_left;               // number of bytes left to fill the buffer capacity
@@ -582,9 +582,9 @@ char *parseNstore(char *msg_bffr, char *node_bffr, int fd){
     char one_cmd[MAX_MSG_LENGTH];   memset(one_cmd, 0, MAX_MSG_LENGTH);
     char cmds_left[MAX_MSG_LENGTH]; memset(one_cmd, 0, MAX_MSG_LENGTH);
 
-    scan_ptr = msg_bffr;
+    scan_ptr = *msg_bffr;
 
-    if(( token=strtok(node_bffr,delim)) != NULL){
+    if(( token=strtok(*node_bffr,delim)) != NULL){
         strcpy(one_cmd, token);
         while((token = strtok(NULL, delim)) != NULL){
             strcat(cmds_left, token);
@@ -603,7 +603,7 @@ char *parseNstore(char *msg_bffr, char *node_bffr, int fd){
                 cmds_left[strlen(token+1)] = '\n';
             }
             
-            strcpy(node_bffr, cmds_left);// keep the remainder
+            strcpy(*node_bffr, cmds_left);// keep the remainder
             
             break;                
         } 
