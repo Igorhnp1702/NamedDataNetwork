@@ -291,7 +291,8 @@ void select_cmd(struct personal_node *personal, char *input){
                 
         //     }                            
         // }
-            
+        
+        free_contact(&(personal->extern_node));
         free(personal);
         exit(0);
 
@@ -523,7 +524,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
             free(return_msg);
         }
 
-        personal->extern_node = contact_init(personal->extern_node);                
+        //personal->extern_node = contact_init(personal->extern_node);                
         strcpy(personal->extern_node->tcp_port, connectTCP);
         strcpy(personal->extern_node->node_addr, connectIP);
 
@@ -531,39 +532,49 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         
         errno = 0;
         scan_ptr = buffer;
+        char *token;
+        const char delim[2] = "\n";
 
         printf("Expecting SAFE\n");
 
         while (((nread = read(personal->extern_node->node_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
+            
+            if((token = strtok(scan_ptr,delim)) != NULL){ //command found
+                scan_ptr += strlen(token);
+                strcpy(personal->extern_node->node_buff, scan_ptr);// keep the remainder
+                
+                break;                
+            } 
             scan_ptr += nread - 1;
-            nleft = MAX_MSG_LENGTH;
+            
+            nleft = MAX_MSG_LENGTH - nread;
             if (*(scan_ptr) == '\n') break;
         }
         
         if (nread == -1) {
             printf("Error in djoin: read returned %s while reading SAFE message.\n", strerror(errno));
             close(personal->extern_node->node_fd);
-            free_contact(&(personal->extern_node));
+            reset_contact(&(personal->extern_node));
             return 1;
         }        
-        sscanf(buffer, "%s", msg_type);
+        sscanf(token, "%s", msg_type);
         
         if(strcmp(msg_type, safe_str) != 0){
             
             printf("Error in direct join: New extern did not send SAFE message\n");
             close(personal->extern_node->node_fd);
-            free_contact(&(personal->extern_node));
+            reset_contact(&(personal->extern_node));
             return 1;
             
         }
-        printf("Message received %s\n", buffer);
+        printf("Message received %s\n", token);
         
-        if((sscanf(buffer, "%*s %s %s", personal->backup_addr, personal->backup_tcp)) != 2){
+        if((sscanf(token, "%*s %s %s", personal->backup_addr, personal->backup_tcp)) != 2){
             
             printf("Error in direct join: Failed to read the backup node's interface\n");
             printf("Connection with new extern was closed\n");            
             close(personal->extern_node->node_fd);
-            free_contact(&(personal->extern_node));            
+            reset_contact(&(personal->extern_node));            
             return 1;
         }
 
@@ -580,37 +591,39 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
             
             printf("Expecting ENTRY\n");
 
-            memset(buffer, 0, MAX_MSG_LENGTH);
-            scan_ptr = buffer;
-            while (((nread = read(personal->extern_node->node_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
-                scan_ptr += nread - 1;
-                nleft = MAX_MSG_LENGTH;
-                if (*(scan_ptr) == '\n') break;
-            }            
-
-            if (nread == -1) {
-                printf("Error in djoin: read returned %s while reading ENTRY message.\n", strerror(errno));
-                close(personal->extern_node->node_fd);
-                free_contact(&(personal->extern_node));
-                return 1;
-            }
             
-            sscanf(buffer, "%s", msg_type);
+            // while (((nread = read(personal->extern_node->node_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
+            //     scan_ptr += nread - 1;
+            //     nleft = MAX_MSG_LENGTH;
+            //     if (*(scan_ptr) == '\n') break;
+            // }            
+
+            // if (nread == -1) {
+            //     printf("Error in djoin: read returned %s while reading ENTRY message.\n", strerror(errno));
+            //     close(personal->extern_node->node_fd);
+            //     reset_contact(&(personal->extern_node));
+            //     return 1;
+            // }
+
+            
+            
+            printf("Message received %s\n", personal->extern_node->node_buff);
+            sscanf(personal->extern_node->node_buff, "%s", msg_type);
             if(strcmp(msg_type, entry_str) != 0){
             
                 printf("Error in direct join: New anchor did not send ENTRY message\n");
                 close(personal->extern_node->node_fd);
-                free_contact(&(personal->extern_node));
+                reset_contact(&(personal->extern_node));
                 return 1;
                 
             }
-            printf("Message received %s\n", buffer);
-            if((sscanf(buffer, "%*s %s %s", aux_node->node_addr, aux_node->tcp_port)) != 2){
+            
+            if((sscanf(personal->extern_node->node_buff, "%*s %s %s", aux_node->node_addr, aux_node->tcp_port)) != 2){
             
                 printf("Error in direct join: Failed to read the partner anchor's interface\n");
                 printf("Connection with new extern was closed\n");            
                 close(personal->extern_node->node_fd);
-                free_contact(&(personal->extern_node));            
+                reset_contact(&(personal->extern_node));            
                 return 1;
             }
             if((strcmp(aux_node->node_addr, personal->extern_node->node_addr)) != 0 ||
@@ -619,7 +632,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
                 printf("Error in direct join: Partner anchor's interface does not match the extern node's interface\n");
                 printf("Connection with new extern was closed\n");            
                 close(personal->extern_node->node_fd);
-                free_contact(&(personal->extern_node));            
+                reset_contact(&(personal->extern_node));            
                 return 1;
             }
 
@@ -631,7 +644,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
                 printf("Error in direct join: Failed to send SAFE to partner anchor\n");
                 printf("Connection with new extern was closed\n");            
                 close(personal->extern_node->node_fd);
-                free_contact(&(personal->extern_node));            
+                reset_contact(&(personal->extern_node));            
                 return 1;
 
             }

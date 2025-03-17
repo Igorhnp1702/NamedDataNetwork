@@ -416,20 +416,20 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 //new intern
                 new_internal = NULL;
                 new_internal = contact_init(new_internal);
-                strcpy(new_internal->node_addr, tcp_cmd);
+                strcpy(new_internal->tcp_port, tcp_cmd);
                 strcpy(new_internal->node_addr, ip_cmd);
                 new_internal->node_fd = *src_fd;
 
                 slf_node->internals_list = insertnode(slf_node->internals_list, new_internal);
                 slf_node->n_internals++;                                
 
-                printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                printf("Sending %s %s %s\n", safe_str, ip_cmd, tcp_cmd);
                 return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
                 
                 if (return_msg != NULL) {
 
                     printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
-                    printf("%s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                    printf("%s %s %s\n", safe_str, ip_cmd, tcp_cmd);
                     
                     free(return_msg);
                     return_msg = NULL;                        
@@ -445,7 +445,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
                 printf("Sending %s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                 
-                return_msg = send_entry(&(slf_node->extern_node->node_fd), slf_node->personal_addr, slf_node->personal_tcp,
+                return_msg = send_entry(src_fd, slf_node->personal_addr, slf_node->personal_tcp,
                                         ip_cmd, tcp_cmd);
                 
                 if (return_msg != NULL) {
@@ -465,7 +465,8 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                     return ++fail_flag;                        
                 }
                 strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
-                strcpy(slf_node->extern_node->node_addr, ip_cmd);                
+                strcpy(slf_node->extern_node->node_addr, ip_cmd);
+                slf_node->extern_node->node_fd = *src_fd;                
                 slf_node->anchorflag = 1; 
 
             }
@@ -569,4 +570,48 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
         return_msg = NULL;
     }
     return fail_flag;
+}
+
+char *parseNstore(char *msg_bffr, char *node_bffr, int fd){
+
+    ssize_t bytes_read;               // number of bytes read from a read operation
+    ssize_t bytes_left;               // number of bytes left to fill the buffer capacity
+    char *scan_ptr;
+    const char delim[2] = "\n";
+    char *token;
+    char one_cmd[MAX_MSG_LENGTH];   memset(one_cmd, 0, MAX_MSG_LENGTH);
+    char cmds_left[MAX_MSG_LENGTH]; memset(one_cmd, 0, MAX_MSG_LENGTH);
+
+    scan_ptr = msg_bffr;
+
+    if(( token=strtok(node_bffr,delim)) != NULL){
+        strcpy(one_cmd, token);
+        while((token = strtok(NULL, delim)) != NULL){
+            strcat(cmds_left, token);
+            cmds_left[strlen(token+1)] = '\n';
+        }
+        
+        strcpy(node_bffr, cmds_left);// keep the remainder
+    }
+    
+    while (((bytes_read = read(fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (bytes_read < bytes_left)) { //read msg to buffer
+            
+        if((token = strtok(scan_ptr,delim)) != NULL){ //command found
+            strcpy(one_cmd, token);
+            while((token = strtok(NULL, delim)) != NULL){
+                strcat(cmds_left, token);
+                cmds_left[strlen(token+1)] = '\n';
+            }
+            
+            strcpy(node_bffr, cmds_left);// keep the remainder
+            
+            break;                
+        } 
+        scan_ptr += bytes_read - 1;
+        
+        bytes_left = MAX_MSG_LENGTH - bytes_read;
+        if (*(scan_ptr) == '\n') break;
+    }
+
+    return one_cmd;
 }

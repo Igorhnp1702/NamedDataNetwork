@@ -119,6 +119,15 @@ void free_contact(nodeinfo_t **contact){
     return;
 }//free_contact()
 
+void reset_contact(nodeinfo_t **contact){
+    memset((*contact)->node_addr, 0, MAX_ADDRESS_SIZE);
+    memset((*contact)->tcp_port, 0, MAX_TCP_UDP_CHARS);
+    memset((*contact)->node_buff, 0, MAX_MSG_LENGTH);
+    (*contact)->node_fd = -1;
+    return;
+
+}
+
 
 struct personal_node *reset_personal(struct personal_node *personal){
            
@@ -127,8 +136,8 @@ struct personal_node *reset_personal(struct personal_node *personal){
     /*clear extern and backup nodes*/
     if (personal->extern_node != NULL){
         close(personal->extern_node->node_fd);
-        free_contact(&(personal->extern_node));
-        personal->extern_node = NULL;
+        reset_contact(&(personal->extern_node));
+        
     }
             
     memset(personal->backup_addr, 0, MAX_ADDRESS_SIZE);

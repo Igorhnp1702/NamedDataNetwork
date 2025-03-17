@@ -172,6 +172,8 @@ void free_contact(nodeinfo_t **contact);
  ****************************************************************/
 void contact_copy(nodeinfo_t *dest, nodeinfo_t *src);
 
+void reset_contact(nodeinfo_t **contact);
+
 nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node);
 
 nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head); //-Please call the calloc function to allocate memory to the node itself
