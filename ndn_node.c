@@ -37,18 +37,26 @@ nodeinfo_t *contact_init(nodeinfo_t *contact){
     
     // initialize with NULL before calling this function
     
-    contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t));
+    if(contact = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t)) == NULL){
+        printf("Error in contact_init: Failed to allocate memory\n");
+        exit(1);
+    }
     
     /* initializing positive integer variables to -1 */
-          
-    if((contact->network = (char*)calloc(MAX_NET_CHARS, sizeof(char))) == NULL ||      // integer from 000 to 999
-       (contact->tcp_port = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char))) == NULL ||     // tcp port; integer from 0 to 65 536
-       (contact->node_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char))) == NULL ||   // IPv4 address
-       (contact->node_buff = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
-
-        printf("Error in contact_init: Failed to allocate memory for the node's members. Process terminated\n");
+             
+    if((contact->tcp_port = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char))) == NULL){
+        printf("Error in contact_init: Failed to allocate memory\n");
         exit(1);
-    }   
+    }
+    if((contact->node_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char))) == NULL){
+        printf("Error in contact_init: Failed to allocate memory\n");
+        exit(1);
+    }
+    if((contact->node_buff = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
+        printf("Error in contact_init: Failed to allocate memory\n");
+        exit(1);
+    }
+    
     contact->node_fd = -1;
     //!ponderar inicializar tudo com NULL em vez de 0
     return contact;
@@ -61,19 +69,32 @@ struct personal_node *personal_init(struct personal_node *personal){
         printf("Error in personal_init: Failed to allocate memory. Process terminated\n");
         exit(1);
     }
+    
+    if((personal->personal_net = (char*)calloc(MAX_NET_CHARS, sizeof(char))) == NULL){
+        printf("Error in personal_init: Failed to allocate memory. Process terminated\n");
+        exit(1);
+    }
 
-    personal->persn_info = contact_init(personal->persn_info);
+    if((personal->backup_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char))) == NULL){
+        printf("Error in personal_init: Failed to allocate memory. Process terminated\n");
+        exit(1);
+    }
 
+    if((personal->backup_tcp = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char))) == NULL){
+        printf("Error in personal_init: Failed to allocate memory. Process terminated\n");
+        exit(1);
+    }
     personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
     personal->network_flag = 0;
     personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
-    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
-    personal->client_fd = -1;   // file descriptor for a client node  
+    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor    
+    personal->personal_addr = NULL;
+    personal->personal_tcp = NULL;  
     personal->udp_port = NULL;   //UDP server port
     personal->udp_address = NULL;    //UDP server address
     personal->extern_node = NULL;   //extern neighbor node
-    personal->backup_node = NULL;   //backup neighbor node
+    
    
     /* set the start of the list to NULL */
 
@@ -88,52 +109,37 @@ struct personal_node *personal_init(struct personal_node *personal){
 }//personal_init()
 
 
-void free_contact(nodeinfo_t *contact){
+void free_contact(nodeinfo_t **contact){
     
-    free(contact->node_buff);
-    free(contact->network);
-    free(contact->tcp_port);
-    free(contact->node_addr);    
-    free(contact);
+    free((*contact)->node_addr);
+    free((*contact)->tcp_port);    
+    free((*contact)->node_buff);            
+    free(*contact);
 
     return;
 }//free_contact()
 
 
 struct personal_node *reset_personal(struct personal_node *personal){
-       
-    nodesLinkedlist_t *aux1, *aux2;
-
-    /* clear the memory for the internal nodes */
-
-    aux1 = personal->internals_list;
-    
-    while(aux1 != NULL){
-        aux2 = aux1;
-        aux1 = aux1->next;
-        free_contact(aux2->node);
-        free(aux2);
-    }
-
+           
     personal->internals_list = clearlist(personal->internals_list);
     
     /*clear extern and backup nodes*/
-    if (personal->extern_node != NULL){        
-        free_contact(personal->extern_node);
+    if (personal->extern_node != NULL){
+        close(personal->extern_node->node_fd);
+        free_contact(&(personal->extern_node));
         personal->extern_node = NULL;
     }
             
-    if (personal->backup_node != NULL){
-        free_contact(personal->backup_node);
-        personal->backup_node = NULL;
-    }
+    memset(personal->backup_addr, 0, MAX_ADDRESS_SIZE);
+    memset(personal->backup_tcp, 0, MAX_TCP_UDP_CHARS);
 
     personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
     personal->network_flag = 0;
     personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
     personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
-    personal->client_fd = -1;   // file descriptor for a client node
+    
 
     return personal;
 
@@ -141,9 +147,7 @@ struct personal_node *reset_personal(struct personal_node *personal){
 
 void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
 
-    memset(dest->network, 0, 4 * sizeof(*dest->network));
-    strcpy(dest->network, src->network);
-
+    
     memset(dest->tcp_port, 0, 6 * sizeof(*dest->tcp_port));
     strcpy(dest->tcp_port, src->tcp_port);
     
@@ -152,6 +156,8 @@ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
 
     memset(dest->node_buff, 0, MAX_MSG_LENGTH * sizeof(*dest->node_buff));
     strcpy(dest->node_buff, src->node_buff);
+
+    dest->node_fd = src->node_fd;
 
     return;
 }//contact_copy()
@@ -228,11 +234,12 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 		printf("\n%s | %s was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
         aux = head;
 		head = head->next;
-		free_contact(aux->node);		
+		free_contact(&(aux->node));		
 		free(aux);		
 		if(head == NULL){
 			printf("\nThe list of internals is now empty\n\n");
 		}
+        
 		return head;			
 	}
 	
@@ -247,7 +254,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 			printf("\n%s | %s was removed from the internals list\n\n", listptr->node->node_addr, listptr->node->tcp_port);
             aux = listptr;
 			listptr = listptr->next;			
-			free_contact(aux->node);
+			free_contact(&(aux->node));
 			free(aux);
 			
 			if(listptr == NULL){
@@ -260,7 +267,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 			printf("\n%s | %s was removed from the internals list\n\n", listptr->next->node->node_addr, listptr->next->node->tcp_port);
             aux = listptr->next;
 			listptr->next = listptr->next->next;			
-			free_contact(aux->node);
+			free_contact(&(aux->node));
 			free(aux);
 			
 			return head;
@@ -273,16 +280,17 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 
 nodesLinkedlist_t *clearlist(nodesLinkedlist_t* head){
 
+    if(head == NULL) return head;
     nodesLinkedlist_t *aux1, *aux2;
 
     /* clear the memory for the internal nodes */
-
+    
     aux1 = head;
     
     while(aux1 != NULL){
         aux2 = aux1;
         aux1 = aux1->next;
-        free_contact(aux2->node);
+        free_contact(&(aux2->node));
         free(aux2);
     }
     head = NULL;

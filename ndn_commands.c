@@ -273,8 +273,8 @@ void select_cmd(struct personal_node *personal, char *input){
         // free the memory, close the fds and get out of the program     
         
         printf("Executing %s...\n\n", exit_str);
-        leave(personal);                
-        free_contact(personal->persn_info);
+        if(personal->network_flag == 1) leave(personal);                
+        
 
         // if(personal->queue_ptr != NULL){
         
@@ -393,8 +393,8 @@ int join(struct personal_node *personal, char *net) {
         
         printf("The network is empty. You are the first to join\n");
 
-        memset(personal->persn_info->network, 0, 4*sizeof(char));
-        if(djoin(personal, "0.0.0.0", personal->persn_info->tcp_port) == 1) {
+        memset(personal->personal_net, 0, 4*sizeof(char));
+        if(djoin(personal, "0.0.0.0", personal->personal_tcp) == 1) {
             printf("Error in join: Failed to enter the network\n");
             return ++success_flag;
         }
@@ -402,15 +402,15 @@ int join(struct personal_node *personal, char *net) {
 
     // try to register the node
 
-    if(strcmp(node_reg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, personal->persn_info->tcp_port, net), "1") != 0){
+    if(strcmp(node_reg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, net), "1") != 0){
         
         printf("Error in join: Failed to register the node\n");
-        node_unreg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, personal->persn_info->tcp_port, net);
+        node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, net);
         return ++success_flag;
     }
     personal->join_flag = 1; 
     free(nodeslist);
-    free_contact(aux);
+    free_contact(&aux);
     serverlist = clearlist(serverlist);
      
     return success_flag;
@@ -430,7 +430,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
            
     if(check_ports(connectTCP) == 1){
         printf("Error in direct join: The boot TCP port is invalid. Command ignored\n");
-        printf("Please insert a 1 to 5 digit TCP port from 0 to 65536");
+        printf("Please insert a 1 to 5 digit TCP port from 0 to 65536");        
         return ++success_flag;
     }
     
@@ -441,21 +441,22 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
     ssize_t nread;               // number of bytes read from a read operation
     ssize_t nleft;               // number of bytes left to fill the buffer capacity
     char *scan_ptr;
+    char msg_type[MAX_MSG_CMD_SIZE]; memset(msg_type, 0, MAX_MSG_CMD_SIZE);
     nleft = MAX_MSG_LENGTH;
 
-    struct timeval timeout;
-    timeout.tv_sec = 5;  // 5-second timeout
-    timeout.tv_usec = 0;
+    // struct timeval timeout;
+    // timeout.tv_sec = 5;  // 5-second timeout
+    // timeout.tv_usec = 0;
     
     personal->server_fd = socket(AF_INET, SOCK_STREAM, 0); // personal server socket for the intern nodes
-    if (personal->server_fd < 0) {
+    if (personal->server_fd < 0) {        
         printf("Error in socket()\n");
         printf("This node cannot belong to a network.\n");
         printf("Because of this, the process will be terminated\n");
         // free and close everything
         return 1;        
     }
-    setsockopt(personal->server_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    //setsockopt(personal->server_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     FD_SET(personal->server_fd, &personal->crr_scks);           // add server socket to FD set
 
     personal->max_fd = personal->server_fd;
@@ -467,7 +468,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
 
     // pass the information in "criteria" to "srv_result" 
 
-    errflag = getaddrinfo(NULL, personal->persn_info->tcp_port, &srv_criteria, &srv_result);
+    errflag = getaddrinfo(NULL, personal->personal_tcp, &srv_criteria, &srv_result);
     if (errflag != 0) {
         printf("Error in getaddrinfo()\n");
         printf("This node cannot belong to a network.\n");
@@ -502,20 +503,16 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
 
     if (strcmp(connectIP, "0.0.0.0") == 0) {  //First node of the network
         personal->anchorflag = 1;             //!confirmar
-        personal->extern_node = contact_init(personal->extern_node);        
-        personal->backup_node = contact_init(personal->backup_node);
+        personal->extern_node = contact_init(personal->extern_node);                
         
     }
     else{
                 
         //Sends ENTRY message
-        if(send_entry(&(personal->client_fd), personal->persn_info->node_addr, personal->persn_info->tcp_port, 
+        if(send_entry(&(personal->extern_node->node_fd), personal->personal_addr, personal->personal_tcp, 
                       connectIP, connectTCP) == NULL){
                         
-            printf("Error in direct join: Failed to join the network\n");
-            // unregister from the node server, if necessary
-            // clear all data
-            //return 1;
+            printf("Error in direct join: Failed to join the network\n");                                    
             return 1;
         }
         else{
@@ -527,33 +524,105 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         strcpy(personal->extern_node->tcp_port, connectTCP);
         strcpy(personal->extern_node->node_addr, connectIP);
 
-        //Receives SAFE message
-
-        personal->backup_node = contact_init(personal->backup_node);
+        //Receives SAFE message        
         
         errno = 0;
         scan_ptr = buffer;
 
-        while (((nread = read(personal->client_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
+        printf("Expecting SAFE\n");
+
+        while (((nread = read(personal->extern_node->node_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
             scan_ptr += nread - 1;
             nleft = MAX_MSG_LENGTH;
             if (*(scan_ptr) == '\n') break;
         }
-
-        if (nread == -1) {
-            printf("Error in djoin: read returned %s while reading SAFE message. The message was incomplete.\n", strerror(errno));
-            // unregister from the node server, if necessary
-            // clear all data
-            //return 1;
-        }
         
-        sscanf(buffer, "%*s %s %s", personal->backup_node->node_addr, personal->backup_node->tcp_port);
+        if (nread == -1) {
+            printf("Error in djoin: read returned %s while reading SAFE message.\n", strerror(errno));
+            close(personal->extern_node->node_fd);
+            free_contact(&(personal->extern_node));
+            return 1;
+        }        
+        sscanf(buffer, "%s", msg_type);
+        
+        if(strcmp(msg_type, safe_str) != 0){
+            
+            printf("Error in direct join: New extern did not send SAFE message\n");
+            close(personal->extern_node->node_fd);
+            free_contact(&(personal->extern_node));
+            return 1;
+            
+        }
+        printf("Message received %s\n", buffer);
+        
+        if((sscanf(buffer, "%*s %s %s", personal->backup_addr, personal->backup_tcp)) != 2){
+            
+            printf("Error in direct join: Failed to read the backup node's interface\n");
+            printf("Connection with new extern was closed\n");            
+            close(personal->extern_node->node_fd);
+            free_contact(&(personal->extern_node));            
+            return 1;
+        }
 
         // check if it's an anchor
-        if (strcmp(personal->persn_info->node_addr, personal->backup_node->node_addr) == 0 && 
-            strcmp(personal->persn_info->tcp_port, personal->backup_node->tcp_port) == 0) {
+        if (strcmp(personal->personal_addr, personal->backup_addr) == 0 && 
+            strcmp(personal->personal_tcp, personal->backup_tcp) == 0) {
             
             personal->anchorflag = 1;
+            nodeinfo_t *aux_node = NULL;
+            aux_node = contact_init(aux_node);
+            
+            
+            //expect ENTRY and send SAFE
+            
+            printf("Expecting ENTRY\n");
+
+            memset(buffer, 0, MAX_MSG_LENGTH);
+            scan_ptr = buffer;
+            while (((nread = read(personal->extern_node->node_fd, scan_ptr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
+                scan_ptr += nread - 1;
+                nleft = MAX_MSG_LENGTH;
+                if (*(scan_ptr) == '\n') break;
+            }            
+
+            if (nread == -1) {
+                printf("Error in djoin: read returned %s while reading ENTRY message.\n", strerror(errno));
+                close(personal->extern_node->node_fd);
+                free_contact(&(personal->extern_node));
+                return 1;
+            }
+            
+            sscanf(buffer, "%s", msg_type);
+            if(strcmp(msg_type, entry_str) != 0){
+            
+                printf("Error in direct join: New anchor did not send ENTRY message\n");
+                close(personal->extern_node->node_fd);
+                free_contact(&(personal->extern_node));
+                return 1;
+                
+            }
+            printf("Message received %s\n", buffer);
+            if((sscanf(buffer, "%*s %s %s", aux_node->node_addr, aux_node->tcp_port)) != 2){
+            
+                printf("Error in direct join: Failed to read the backup node's interface\n");
+                printf("Connection with new extern was closed\n");            
+                close(personal->extern_node->node_fd);
+                free_contact(&(personal->extern_node));            
+                return 1;
+            }   
+            printf("Sending %s %s %s\n", safe_str, aux_node->node_addr, aux_node->tcp_port);
+
+            if((strcmp(send_safe(personal->extern_node->node_fd, aux_node->node_addr, aux_node->tcp_port), "1")) != 0){
+                printf("Error in direct join: Failed to send SAFE to partner anchor\n");
+                printf("Connection with new extern was closed\n");            
+                close(personal->extern_node->node_fd);
+                free_contact(&(personal->extern_node));            
+                return 1;
+
+            }
+            personal->internals_list = insertnode(personal->internals_list, aux_node);
+
+
         }
     }
     printf("Successfuly joined a network\n"); 
@@ -562,14 +631,14 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
     
     if(personal->join_flag == 1){
         printf("Network: %s\nAdress: %s\nPort: %s\n",       
-        personal->persn_info->network,
-        personal->persn_info->node_addr, 
-        personal->persn_info->tcp_port);
+        personal->personal_net,
+        personal->personal_addr, 
+        personal->personal_tcp);
         return 0;    
     }
     printf("Adress: %s\nPort: %s\n",     
-    personal->persn_info->node_addr, 
-    personal->persn_info->tcp_port);
+        personal->personal_addr, 
+        personal->personal_tcp);
     
     return 0;
 }//djoin
@@ -742,60 +811,50 @@ int show_topology(struct personal_node *personal){
     if(personal == NULL){
         printf("The node is not initialized\n");
         return ++success_flag;
-    }
+    }    
 
-    if(personal->persn_info == NULL){
-        printf("The node's information is not initialized\n");
-        return ++success_flag;
-    }
-
-    if(personal->network_flag != 0){
+    if(personal->network_flag == 1){
         printf("\n\nYour node:\n\n");        
         printf("Network: %s\nAdress: %s\nPort: %s\n\n",           
-        personal->persn_info->network,
-        personal->persn_info->node_addr, 
-        personal->persn_info->tcp_port);
+        personal->personal_net,
+        personal->personal_addr, 
+        personal->personal_tcp);
         
     }
     else{
         printf("Error in show topology: You are not inside a network\n");
         return ++success_flag;
     }
-    if(personal->extern_node == NULL){
-        printf("The external node's information is not initialized\n");
-        return ++success_flag;
-    }
-    if (strcmp(personal->extern_node->network, "") != 0) {
-        printf("\n\nExternal neighbor: \n");        
-        printf("Network: %s\nAdress: %s\nPort: %s\n\n",          
-        personal->extern_node->network,
-        personal->extern_node->node_addr, 
-        personal->extern_node->tcp_port);
+    if(personal->extern_node != NULL){
         
-        
+        if (strcmp(personal->extern_node->node_addr, "") != 0) {
+            printf("\n\nExternal neighbor: \n");        
+            printf("Adress: %s\nPort: %s\n\n",                  
+            personal->extern_node->node_addr, 
+            personal->extern_node->tcp_port);
+            
+            
+        }
     }
     else {
         printf("\nThere is no external neighbor!\n");
     }
 
-    if (strcmp(personal->backup_node->network, "") != 0) {
+    if (strcmp(personal->backup_addr, "") != 0) {
         printf("\n\nBackup neighbor: \n");                
-        printf("Network: %s\nAdress: %s\nPort: %s\n\n",         
-        personal->backup_node->network, 
-        personal->backup_node->node_addr, 
-        personal->backup_node->tcp_port);
-        
-        
+        printf("Adress: %s\nPort: %s\n\n",                  
+        personal->backup_addr, 
+        personal->backup_tcp);
+                
     }   
     else {
         printf("\nThere is no backup neighbor!\n");   
     }    
         
     if(personal->internals_list == NULL){
-        if(strcmp(personal->internals_list->node->network, "") == 0){
-            
-            printf("\nThere are no internal neighbors\n");        
-        }
+          
+        printf("\nThere are no internal neighbors\n");        
+        
         
     }
     else{
@@ -804,8 +863,7 @@ int show_topology(struct personal_node *personal){
         aux = personal->internals_list;
         while(aux != NULL){
                             
-            printf("Network: %s\nAdress: %s\nPort: %s\n\n",                    
-                aux->node->network,
+            printf("Adress: %s\nPort: %s\n\n",                                    
                 aux->node->node_addr,
                 aux->node->tcp_port);
 
@@ -835,8 +893,8 @@ int leave(struct personal_node *personal) {
     // }    
     
     if(personal->join_flag == 1){
-        if ((node_unreg(personal->udp_address, personal->udp_port, personal->persn_info->node_addr, 
-            personal->persn_info->tcp_port, personal->persn_info->network)) == NULL){
+        if ((node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp,
+             personal->personal_net)) == NULL){
 
             printf("Error in leave: Failed to unregister the node. The connections are still open.\n");
             return 1;
@@ -844,7 +902,7 @@ int leave(struct personal_node *personal) {
         }
         // check return value of node_unreg
         personal->join_flag = 0;
-        strcpy(personal->persn_info->network, "");
+        strcpy(personal->personal_net, "");
     }
     
     // close connections 

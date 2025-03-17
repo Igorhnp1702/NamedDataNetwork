@@ -198,7 +198,12 @@ char *server_inquiry(char *server_IP, char *server_UDP, char *net){// request th
 
 char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char *dest_tcp){
     
-    struct addrinfo srv_criteria, *srv_result; 
+    //On server side, the node binds the socket to the desired ip and port
+    //on client side, you use the desired ip and a random port given by the OS
+    // The intern node receives messages in a random port
+    // The extern node receives messages in the desired port
+    
+    struct addrinfo srv_criteria, *srv_result;    
     int errflag;
     ssize_t nbytes, nleft, nwritten;
     char *ptr;
@@ -233,7 +238,7 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         memset(&srv_criteria, 0, sizeof(srv_criteria));
         srv_criteria.ai_family = AF_INET;       //IPv4 address family
         srv_criteria.ai_socktype = SOCK_STREAM; // TCP socket
-
+        
         errflag = getaddrinfo(dest_ip, dest_tcp, &srv_criteria, &srv_result);
         if(errflag != 0){
             printf("Send entry: Error in getaddrinfo()\n");
@@ -243,7 +248,8 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         errno = 0;
         errflag = connect(*fd, srv_result->ai_addr, srv_result->ai_addrlen);
         if(errflag == -1){
-            printf("Send entry: Error in connect(): %s\n", strerror(errno));            
+            printf("Send entry: Error in connect(): %s\n", strerror(errno));
+            close(*fd);
             return NULL;
         }
 
@@ -259,6 +265,7 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         nwritten = write(*fd, ptr, nleft);
         if(nwritten <= 0){
             printf("Send entry: Error in write\n");
+            close(*fd);
             return NULL;
         }
         nleft -= nwritten;
@@ -315,7 +322,7 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
 
 int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
-    int success_flag = 0;
+    int fail_flag = 0;
 
     char cmd[MAX_MSG_CMD_SIZE];         //message command of msg
     memset(cmd, 0, sizeof(cmd));    
@@ -344,7 +351,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
     //get commnand
     if (sscanf(msg, "%s", cmd) != 1) {
         printf("Error in parse_tcp: Failed to read message type\n");
-        return ++success_flag;
+        return ++fail_flag;
     }
 
     //try to read and execute command
@@ -363,7 +370,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
         }else{
         
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
-            return ++success_flag;
+            return ++fail_flag;
         }                       
             
     }
@@ -378,7 +385,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
         }else{
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
-            return ++success_flag;
+            return ++fail_flag;
         }
     }
 
@@ -392,20 +399,20 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
         }else {
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
-            return ++success_flag;
+            return ++fail_flag;
         }
     }
        
     else if (strcmp(cmd, entry_str) == 0) {
 
-        if (sscanf(msg, "%*s %s %s", ip_cmd, tcp_cmd) == 3){
+        if (sscanf(msg, "%*s %s %s", ip_cmd, tcp_cmd) == 2){
             
             printf("\nMessage received from a new intern neighbor:\n");
             printf("%s\n", msg);
 
             if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network answer with SAFE, followed by an ENTRY
 
-                strcpy(slf_node->extern_node->network, slf_node->persn_info->network);                
+                            
                 strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
                 strcpy(slf_node->extern_node->node_addr, ip_cmd);
                 slf_node->client_fd = *src_fd;
@@ -424,48 +431,52 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                     }                                
                 }
                 else{
-                    printf("Error in parse_tcp: Communication with new intern failed.\n");
+                    printf("Error in parse_tcp.\n");
+                    printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
+                    close(*src_fd);
                     if (return_msg != NULL) { //reset the pointer to the received message
                         free(return_msg);
                         return_msg = NULL;
                     }
-                    return ++success_flag;                        
+                    return ++fail_flag;                        
                 }
 
-                printf("Sending %s %s %s\n", entry_str, slf_node->persn_info->node_addr, slf_node->persn_info->tcp_port);
+                printf("Sending %s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                 
-                return_msg = send_entry(src_fd, slf_node->persn_info->node_addr, slf_node->persn_info->tcp_port,
+                return_msg = send_entry(src_fd, slf_node->personal_addr, slf_node->personal_tcp,
                                         ip_cmd, tcp_cmd);
                 
                 if (strcmp(return_msg, "1") == 0) {
 
                     printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
-                    printf("%s %s %s\n", entry_str, slf_node->persn_info->node_addr, slf_node->persn_info->tcp_port);
+                    printf("%s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                     if (return_msg != NULL){ //reset the pointer to the received message
                         free(return_msg);
                         return_msg = NULL;                        
                     }                                
                 }
                 else{
-                    printf("Error in parse_tcp: Communication with new intern failed.\n");
+                    printf("Error in parse_tcp.\n");
+                    printf("Error connecting to new external: Failed to send ENTRY message. Connection closed\n");
+                    close(*src_fd);
                     if (return_msg != NULL) { //reset the pointer to the received message
                         free(return_msg);
                         return_msg = NULL;
                     }
-                    return ++success_flag;                        
+                    return ++fail_flag;                        
                 }
 
             }
             else {
                 
                 new_internal = NULL;
-                new_internal = contact_init(new_internal);
-                strcpy(new_internal->network, slf_node->persn_info->network);
+                new_internal = contact_init(new_internal);                
                 strcpy(new_internal->node_addr, tcp_cmd);
                 strcpy(new_internal->node_addr, ip_cmd);
                 new_internal->node_fd = *src_fd;
 
                 slf_node->internals_list = insertnode(slf_node->internals_list, new_internal);
+                slf_node->n_internals++;
                 
                 printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
@@ -476,7 +487,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                     if (return_msg != NULL){ //reset the pointer to the received message
                         free(return_msg);
                         return_msg = NULL;
-                        return success_flag;
+                        return fail_flag;
                     }                                
                 }
                 else{
@@ -484,14 +495,16 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                     if (return_msg != NULL) { //reset the pointer to the received message
                         free(return_msg);
                         return_msg = NULL;
+                        printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
+                        close(*src_fd);
                     }
-                    return ++success_flag;                        
+                    return ++fail_flag;                        
                 }
             }                        
         }
         else {
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
-            return ++success_flag;
+            return ++fail_flag;
         }
     }
 
@@ -499,7 +512,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
         if(sscanf(msg, "%*s %s %s",ip_cmd, tcp_cmd) == 2){
 
-            if(*src_fd == slf_node->client_fd){ // The message reached me through the extern node
+            if(*src_fd == slf_node->extern_node->node_fd){ // The message reached me through the extern node
                 
                 
                 printf("\nMessage received from %s | %s:\n", slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
@@ -518,53 +531,40 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                         break;
                     }
                     aux = aux->next;
-                }  
-                
-                // for(i = 0; i < MAX_INTERNALS; i++){
-                    
-                //     if(slf_node->internals_array[i] != NULL){
-                //         if(*src_fd == slf_node->internals_array[i]->node_fd){
-                                                    
-                //             printf("\nMessage received from %s | %s:\n", slf_node->internals_array[i]->node_addr, slf_node->internals_array[i]->tcp_port);
-                //             printf("%s\n", msg);                                                                        
-                //             break;
-                //         }
-                //     }
-                // }
+                }                                  
             }        
 
             printf("Updating the backup neighbor...\n\n");
             
-            memset(slf_node->backup_node->network, 0, 4 * sizeof(*slf_node->backup_node->network));
-            memset(slf_node->backup_node->tcp_port, 0, 6 * sizeof(*slf_node->backup_node->tcp_port));
-            memset(slf_node->backup_node->node_addr, 0, 50 * sizeof(*slf_node->backup_node->node_addr));
+            
+            memset(slf_node->backup_tcp, 0, MAX_TCP_UDP_CHARS * sizeof(*slf_node->backup_tcp));
+            memset(slf_node->backup_addr, 0, MAX_ADDRESS_SIZE * sizeof(*slf_node->backup_addr));
 
-            strcpy(slf_node->backup_node->network, slf_node->persn_info->network);            
-            strcpy(slf_node->backup_node->tcp_port, tcp_cmd);
-            strcpy(slf_node->backup_node->node_addr, ip_cmd);
+                       
+            strcpy(slf_node->backup_tcp, tcp_cmd);
+            strcpy(slf_node->backup_addr, ip_cmd);
 
             printf("New backup neighbor:\n\n");                    
-            printf("Network: %s\nAdress: %s\nPort: %s\n\n",             
-            slf_node->backup_node->network, 
-            slf_node->backup_node->node_addr, 
-            slf_node->backup_node->tcp_port);
+            printf("Adress: %s\nPort: %s\n\n",                         
+            slf_node->backup_addr, 
+            slf_node->backup_tcp);
             
             
         }
         else{
-            printf("Error in rcv_tcp: Failed to read arguments of %s\n", cmd);
-            return ++success_flag;
+            printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
+            return ++fail_flag;
         }
     } 
     
     else{
-        printf("Error in rcv_tcp: Failed to read command!");
-        return ++success_flag;
+        printf("Error in parse_tcp: Failed to read command!");
+        return ++fail_flag;
     }
 
     if (return_msg != NULL) {
         free(return_msg);
         return_msg = NULL;
     }
-    return success_flag;
+    return fail_flag;
 }

@@ -170,9 +170,8 @@ int main(int argc, char **argv){
 
     my_node = personal_init(my_node);
 
-    strcpy(my_node->persn_info->node_addr, personal_addr);
-    strcpy(my_node->persn_info->tcp_port, personal_port);
-
+    my_node->personal_addr = personal_addr;
+    my_node->personal_tcp = personal_port;
     my_node->udp_address = server_addr;
     my_node->udp_port = server_port;
 
@@ -184,8 +183,8 @@ int main(int argc, char **argv){
     int select_ctrl;
     int fd_itr = 0;              // an iterator to go through the FD set
     char buffer[MAX_MSG_LENGTH]; // buffer to receive msg and cmd
-    char msg[MAX_MSG_LENGTH];    // msg to be sent by tcp_client
-    
+    char msg_type[MAX_MSG_CMD_SIZE];
+        
     ssize_t nread;               // number of bytes read from a read operation
     ssize_t nleft;               // number of bytes left to fill the buffer capacity
     int new_fd;                  // a file descriptor to receive the "NEW" message and extract the id of the node
@@ -202,9 +201,9 @@ int main(int argc, char **argv){
     while (1) {
                     
         //In case old external neigbor disconnected, add new one to FD set
-        if ((my_node->client_fd != -1) && (!FD_ISSET(my_node->client_fd, &my_node->crr_scks))) {
-            FD_SET(my_node->client_fd, &my_node->crr_scks);
-            if (my_node->client_fd > my_node->max_fd) my_node->max_fd = my_node->client_fd;
+        if ((my_node->extern_node->node_fd != -1) && (!FD_ISSET(my_node->extern_node->node_fd, &my_node->crr_scks))) {
+            FD_SET(my_node->extern_node->node_fd, &my_node->crr_scks);
+            if (my_node->extern_node->node_fd > my_node->max_fd) my_node->max_fd = my_node->extern_node->node_fd;
         }
 
         //remove all FDs with no activity from FD set my_node->rdy_scks
@@ -217,7 +216,7 @@ int main(int argc, char **argv){
         if (select_ctrl < 0) {         
             printf("Error in select: %s.\nProcess terminated\n", strerror(errno));
             leave(my_node);                    
-            free_contact(my_node->persn_info);
+            
 
             // if(my_node->queue_ptr != NULL){
             
@@ -259,16 +258,18 @@ int main(int argc, char **argv){
                 }
 
                 // accept a connection, if you can
-                else if (fd_itr == my_node->server_fd && strcmp(my_node->persn_info->network, "") != 0) { // atividade no servidor e estou na rede
+                else if (fd_itr == my_node->server_fd && my_node->network_flag == 1) { // atividade no servidor e estou na rede
                     
                     srv_addrlen = sizeof(srv_addr);
                     if((new_fd = accept(my_node->server_fd, &srv_addr, &srv_addrlen)) == -1){
                         printf("Error in accept(). Request rejected\n");
                         //return 1;
                     }                    
-                    
-                    FD_SET(new_fd, &my_node->crr_scks); // prepare to read the ENTRY message
-                    if (new_fd > my_node->max_fd) my_node->max_fd = new_fd;
+                    else{
+                        printf("Accepted connection. Expecting ENTRY\n");       // ENTRY message will come from newfd
+                        FD_SET(new_fd, &my_node->crr_scks);                     // prepare to read the ENTRY message
+                        if (new_fd > my_node->max_fd) my_node->max_fd = new_fd;
+                    }
                     
                 }
 
@@ -287,68 +288,149 @@ int main(int argc, char **argv){
 
                     if (nread == -1) {
                         printf("Error in read: %s\n", strerror(errno));
-                        //return 1;
+                        FD_CLR(fd_itr, &(my_node->crr_scks));                        
                     }                    
-
                     else if (nread == 0) {  //the fd is disconnected
                         
                         memset(&buffer, 0, sizeof(buffer));
                         
-                        if (fd_itr == my_node->client_fd) {    //External neighbor disconnected
+                        if (fd_itr == my_node->extern_node->node_fd) {    //External neighbor disconnected
 
                             
                             printf("External neighbor (Interface %s/%s) disconnected!\n",
                                  my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                             
-                            my_node->client_fd = -1;   // Reset client_fd to -1                            
+                            my_node->extern_node->node_fd = -1;   // Reset client_fd to -1                            
                             
-                            if (my_node->anchorflag == 0) { //not an anchor                                                        
+                            if (my_node->anchorflag == 0) { //not an anchor                                                                                                                        
                                 
-                                memset(msg, 0, sizeof(msg));
-                                printf("Sending %s %s %s\n", entry_str, my_node->persn_info->node_addr, my_node->persn_info->tcp_port);
                                 //Sends ENTRY message , receives SAFE response and updates backup node
                                 
+                                // Until a successfull connection is achieved with a new extern node, try to send an entry to someone
 
-                                // The send_entry function has to wait for the safe message to come
-                                // It does not make sense to send safe message to other nodes when my extern node is not fully updated
+                                // If the backup node fails, pick an intern to be an anchor with you
+                                                                    
+                                printf("Sending %s %s %s\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
 
-                                if(strcmp(send_entry(&(my_node->client_fd), my_node->persn_info->node_addr, my_node->persn_info->tcp_port,
-                                              my_node->backup_node->node_addr, my_node->backup_node->tcp_port), "1") != 0){
-                                    printf("Failed to send a message\n");
-                                    // dont update
-                                }
-                                
-                                contact_copy(my_node->extern_node, my_node->backup_node);                                
-                                memset(my_node->backup_node->network, 0, 4 * sizeof(*my_node->backup_node->network));
-                                memset(my_node->backup_node->tcp_port, 0, 6 * sizeof(*my_node->backup_node->tcp_port));
-                                memset(my_node->backup_node->node_addr, 0, 50 * sizeof(*my_node->backup_node->node_addr));
-
-                                // send safe to everybody else
-
-                                aux = my_node->internals_list;
-
-                                while(aux != NULL){
-                                
-                                    if(strcmp(send_safe(aux->node->node_fd, my_node->backup_node->node_addr, my_node->backup_node->tcp_port), "1") != 0){
-                                        printf("Error in send safe: failed to send safe message to %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
-                                    }
-                                    aux = aux->next;
-                                }
-                                
-                                if (strcmp(my_node->persn_info->node_addr, my_node->backup_node->node_addr) == 0 &&
-                                    strcmp(my_node->persn_info->tcp_port, my_node->backup_node->tcp_port) == 0) {
-                                    
+                                if(strcmp(send_entry(&(my_node->extern_node->node_fd), my_node->personal_addr, my_node->personal_tcp,
+                                            my_node->backup_addr, my_node->backup_tcp), "1") != 0){
+                                    printf("Failed to send %s to new extern (backup_node)\n", entry_str);
+                                    printf("An intern node will be picked to be an anchor with you, if available\n");
                                     my_node->anchorflag = 1;
-                                }                            
-                            }
-                            else if (my_node->n_internals > 0) { //anchor with internals
-                                
-                                // pick the first internal node to be an external
-                                contact_copy(my_node->extern_node, my_node->internals_list->node);
-                                my_node->client_fd = my_node->internals_list->node->node_fd;
+                                    close(my_node->extern_node->node_fd);
+                                    my_node->extern_node->node_fd = -1;
+                                    
+                                }
+                                else{
+                                    printf("Expecting SAFE\n");
+                                    
+                                    while (((nread = read(my_node->extern_node->node_fd, ptr_bffr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
+                                        ptr_bffr += nread - 1;
+                                        nleft = MAX_MSG_LENGTH;
+                                        if (*(ptr_bffr) == '\n') break;
+                                    }                                                                        
+                            
+                                    if (nread == -1) {
+                                        printf("Error in main: read returned %s while reading SAFE message.\n", strerror(errno));
+                                        printf("An intern node will be picked to be an anchor with you, if available\n");
+                                        my_node->anchorflag = 1;
+                                        close(my_node->extern_node->node_fd);
+                                        my_node->extern_node->node_fd = -1;
+                                        continue;
+                                        
+                                    }
 
-                                //Delete that node from the internals list
-                                my_node->internals_list = removenode(my_node->internals_list, my_node->internals_list->node->node_fd);
+                                    sscanf(buffer, "%s", msg_type);
+                                    if(strcmp(msg_type, safe_str) != 0){
+                                        printf("Error in main: Failed new extern did not send SAFE message\n");
+                                        printf("An intern node will be picked to be an anchor with you, if available\n");
+                                        printf("Connection with new extern was closed\n");
+                                        my_node->anchorflag = 1;            
+                                        close(my_node->extern_node->node_fd);
+                                        my_node->extern_node->node_fd = -1;
+                                        continue;
+                                    }
+                                    printf("Message received %s\n", buffer);
+
+                                    strcpy(my_node->extern_node->node_addr, my_node->backup_addr);
+                                    strcpy(my_node->extern_node->tcp_port, my_node->backup_tcp);
+
+                                    // try to get the new backup node
+
+                                    if((parse_tcp(my_node, buffer, my_node->extern_node->node_fd)) == 1 ){
+                                        printf("Error in main: Failed to read the new extern node's interface\n");
+                                        printf("Connection with new extern was closed\n");            
+                                        close(my_node->extern_node->node_fd);
+                                        my_node->extern_node->node_fd = -1;
+                                        continue;
+                                    }                                                                                                                                                                                                                        
+                                    
+                                    // // send safe to everybody else
+
+                                    // aux = my_node->internals_list;
+
+                                    // while(aux != NULL){
+                                    
+                                    //     if(strcmp(send_safe(aux->node->node_fd, my_node->extern_node->node_addr, my_node->extern_node->tcp_port), "1") != 0){
+                                    //         printf("Error in send_safe: failed to send safe message to %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
+                                    //     }
+                                    //     aux = aux->next;
+                                    // }
+                                    
+                                    if (strcmp(my_node->personal_addr, my_node->backup_addr) == 0 &&
+                                        strcmp(my_node->personal_tcp, my_node->backup_tcp) == 0) {
+                                        
+                                        my_node->anchorflag = 1;
+                                    }
+                                }
+                                                        
+                            }
+                            if (my_node->n_internals > 1) { //has internals beyond the anchor partner
+                                
+                                if(my_node->anchorflag == 1 && my_node->extern_node->node_fd == -1){ // is an anchor without the partner
+
+                                    aux = my_node->internals_list;
+                                    while(aux != NULL){
+
+                                        printf("Converting an intern into an extern\n\n");
+                                    
+                                        // search the list for a node to become an external. Start with the first internal 
+                                        contact_copy(my_node->extern_node, aux->node);
+                                        my_node->extern_node->node_fd = aux->node->node_fd;
+
+                                        //send him an entry message followed by a safe message
+
+                                        printf("Sending %s %s %s\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
+
+                                        if(strcmp(send_entry(&(my_node->extern_node->node_fd), my_node->personal_addr, my_node->personal_tcp,
+                                            my_node->backup_addr, my_node->backup_tcp), "1") != 0){
+                                            
+                                            printf("Failed to convert intern into extern. Connection closed.\n");                                            
+                                            aux = removenode(aux, aux->node->node_fd); // head = head->next
+                                            my_node->n_internals--;
+                                            close(my_node->extern_node->node_fd);
+                                            my_node->extern_node->node_fd = -1;
+                                            continue;
+                                        }
+
+                                        printf("Sending %s %s %s\n", safe_str, aux->node->node_addr, aux->node->tcp_port);
+
+                                        if((strcmp(send_safe(my_node->extern_node->node_fd, aux->node->node_addr, aux->node->tcp_port), "1")) != 0){
+                                            
+                                            printf("Failed to convert intern into extern. Connection closed.\n");
+                                            aux = removenode(aux, aux->node->node_fd); // head = head->next
+                                            my_node->n_internals--;
+                                            close(my_node->extern_node->node_fd);
+                                            my_node->extern_node->node_fd = -1;
+                                            continue;
+                                        }                                        
+                                        printf("Conversion successfull\n");
+                                        break;
+                                    }
+                                    //Delete that node from the internals list
+                                    aux = removenode(aux, aux->node->node_fd); // head = head->next
+                                }
+                                
 
                                 // send safe to everybody else
                                
@@ -356,26 +438,24 @@ int main(int argc, char **argv){
                                 
                                 while(aux != NULL){
                                 
-                                    if(strcmp(send_safe(aux->node->node_fd, my_node->backup_node->node_addr, my_node->backup_node->tcp_port), "1") != 0){
+                                    if(strcmp(send_safe(aux->node->node_fd, my_node->backup_addr, my_node->backup_tcp), "1") != 0){
                                         printf("Error in send safe: failed to send safe message to %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
                                     }
                                     aux = aux->next;
                                 }                                                                
                             }
                             else {  //is now the only node in the network
-                                my_node->anchorflag = 1;
+                                //my_node->anchorflag = 1;
                                 // clear the external and the backup node
 
-                                memset(my_node->extern_node->network, 0, 4 * sizeof(*my_node->extern_node->network));
-                                memset(my_node->extern_node->tcp_port, 0, 6 * sizeof(*my_node->extern_node->tcp_port));
-                                memset(my_node->extern_node->node_addr, 0, 50 * sizeof(*my_node->extern_node->node_addr));
-                                memset(my_node->extern_node->node_buff, 0, 50 * sizeof(*my_node->extern_node->node_buff));
+                                
+                                memset(my_node->extern_node->tcp_port, 0, MAX_TCP_UDP_CHARS * sizeof(*my_node->extern_node->tcp_port));
+                                memset(my_node->extern_node->node_addr, 0, MAX_ADDRESS_SIZE * sizeof(*my_node->extern_node->node_addr));
+                                memset(my_node->extern_node->node_buff, 0, MAX_MSG_LENGTH * sizeof(*my_node->extern_node->node_buff));
                                 my_node->extern_node->node_fd = -1;                                
-
-                                memset(my_node->backup_node->network, 0, 4 * sizeof(*my_node->backup_node->network));
-                                memset(my_node->backup_node->tcp_port, 0, 6 * sizeof(*my_node->backup_node->tcp_port));
-                                memset(my_node->backup_node->node_addr, 0, MAX_ADDRESS_SIZE * sizeof(*my_node->backup_node->node_addr));
-                                memset(my_node->backup_node->node_buff, 0, MAX_MSG_LENGTH * sizeof(*my_node->backup_node->node_buff));                                
+                                
+                                memset(my_node->backup_tcp, 0, MAX_TCP_UDP_CHARS * sizeof(*my_node->backup_tcp));
+                                memset(my_node->backup_addr, 0, MAX_ADDRESS_SIZE * sizeof(*my_node->backup_addr));                                                             
                                 
                             }
                             
@@ -397,14 +477,15 @@ int main(int argc, char **argv){
                             }  
                             // remove him from the list
 
-                            my_node->internals_list = removenode(my_node->internals_list, aux->node->node_fd);                            
+                            my_node->internals_list = removenode(my_node->internals_list, aux->node->node_fd);
+                            my_node->n_internals--;                            
 
                         }                               
                         
-                        FD_CLR(fd_itr, &my_node->crr_scks);                                                        
+                        FD_CLR(fd_itr, &(my_node->crr_scks));
                     }
                     else{                        
-                        
+                        printf("Message read from a node: %s\n", buffer);
                         if(parse_tcp(my_node, buffer, &fd_itr) == 1){
                             printf("Error in main: failed to parse a message\n");
                         }

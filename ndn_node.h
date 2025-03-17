@@ -31,11 +31,11 @@
  *  -node_buff = buffer to store unfinished mesages
  ***************************************************************************/
 typedef struct any_node{
-char *network;   // index of the network; integer from 000 to 999
 char *tcp_port;  // tcp port of the node; integer from 0 to 65 536   
 char *node_addr; // IPv4 address with undefined size
-int  node_fd;   // the file descriptor assigned to this node
 char *node_buff; // buffer to store unfinished mesages
+int  node_fd;   // the file descriptor assigned to this node
+
 } nodeinfo_t;
 
 
@@ -72,7 +72,6 @@ typedef struct nodesLinkedlist_t{
  ****************************************************************************/
 struct personal_node{
 
-nodeinfo_t *persn_info;             // contact of the personal node
 int anchorflag;                     // flag that says whether the node is an anchor or not (anchor = backup to itself)
 int network_flag;
 int join_flag;
@@ -80,13 +79,17 @@ int n_internals;                    // counter for the number of internal neighb
 int max_fd;                         // the maximum integer assigned to a file descriptor in this node's FD set
 int client_fd;                      // file descriptor to communicate with the extern node
 int server_fd;                      // to accept connections with other nodes
+char *personal_addr;
+char *personal_tcp;
+char *personal_net;
+char *backup_addr;
+char *backup_tcp;
 char *udp_port;                     // UDP port of the server of nodes
 char *udp_address;                  // UDP address of the server of nodes
 fd_set rdy_scks;                    // set of file descriptors with activity to handle (rdy = ready)
 fd_set crr_scks;                    // set of file descriptors in use (crr = current)
 //objectQueue_t *queue_ptr;           // double linked list of the contents of the node
 nodeinfo_t *extern_node;            // contact of the extern neighbor node
-nodeinfo_t *backup_node;            // contact of the backup neighbor node
 nodesLinkedlist_t *internals_list; // list of contacts of internal neighbors
 };
 
@@ -149,7 +152,7 @@ struct personal_node *reset_personal(struct personal_node *personal);
  *
  *  Return: void;
  ****************************************************************/
-void free_contact(nodeinfo_t *contact);
+void free_contact(nodeinfo_t **contact);
 
 /*****************************************************************
  * contact_copy()
