@@ -58,7 +58,10 @@ nodeinfo_t *contact_init(nodeinfo_t *contact){
     }
     
     contact->node_fd = -1;
-    //!ponderar inicializar tudo com NULL em vez de 0
+    contact->entry_flag = 0;
+    contact->safe_flag = 0;
+    contact->msg_object_flag = 0;
+    
     return contact;
 }//contact_init()
 
@@ -88,7 +91,7 @@ struct personal_node *personal_init(struct personal_node *personal){
     personal->network_flag = 0;
     personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
-    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor    
+    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor        
     personal->personal_addr = NULL;
     personal->personal_tcp = NULL;  
     personal->udp_port = NULL;   //UDP server port

@@ -580,7 +580,7 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
     const char delim[2] = "\n";
     char *token;
     char one_cmd[MAX_MSG_LENGTH];   memset(one_cmd, 0, MAX_MSG_LENGTH);
-    char cmds_left[MAX_MSG_LENGTH]; memset(one_cmd, 0, MAX_MSG_LENGTH);
+    char cmds_left[2*MAX_MSG_LENGTH]; memset(one_cmd, 0, MAX_MSG_LENGTH);
     int msg_found = 0;
 
     str_ptr = *node_bffr;
@@ -616,7 +616,8 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
             // if not, put the half message in one_cmd and
             // try to concatenate with the contents from the file descriptor
             // this guy shouldn't have the \n character
-            snprintf(one_cmd, sizeof(one_cmd),"%s",token);
+
+            if(token != NULL) snprintf(one_cmd, sizeof(one_cmd),"%s",token);
         }         
     
         if(msg_found == 1){ 
@@ -628,69 +629,47 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
             return one_cmd;
 
         }
-
         //concatenate the contents in the file descriptor with the contents in the buffer
-        
-        bytes_read = read(fd, *msg_bffr, MAX_MSG_LENGTH - 1);
+    }
+                       
+    str_ptr = *msg_bffr;
+    //Find msgs in msg_buffer
+    if (((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token = strtok(*msg_bffr,delim)) != NULL)) { // \n found
+    
+        strcat(one_cmd, token); // here, token should be the missing half of one_cmd
+        msg_found = 1;
 
-        errno = 0;
-        if(bytes_read == -1){ 
+        //strtok modifies *node_bffr, we need to restore it
+
+        while((str_ptr = strchr(str_ptr, '\n')) != NULL){ 
             
-            // Error, ignore message
-            printf("\nError in parseNstore: %s\n", strerror(errno));
-            printf("Ignoring message\n");
-            return NULL;
-        }
-
-        if(bytes_read == 0){ 
-            
-            // Sudden disconnection
-            // Deal with it and ignore message
-            printf("\nError in parseNstore: %s\n", strerror(errno));
-            printf("The node disconnected\n");        
-            return NULL;
-        }
+            if((token = strtok(NULL, delim)) != NULL){
         
-        //Find commands in msg_buffer
-        if (((strchr(*node_bffr, '\n')) != NULL) && ((token = strtok(*msg_bffr,delim)) != NULL)) { // \n found
-        
-            strcat(one_cmd, token); // here, token should be the missing half of one_cmd
-            msg_found = 1;
-
-            while((token = strtok(NULL, delim)) != NULL){ // Does *msg_bffr still have things to read?
-                
                 //extract the remainder and put it back where it was, along with the line feed characters
                 strcat(cmds_left, token);
                 strcat(cmds_left, '\n');
             }
-            strcpy(*node_bffr, cmds_left);// keep the remainder
         }
-        else{
-
-        }
-    }
-    
-   
+        if((token = strtok(NULL, delim)) != NULL){ //after strchr returns NULL, there is still the unfinished message to extract
         
-        //msg found
-        msg_found = 1
-            
-        if((token = strtok(scan_ptr,delim)) != NULL){ //command found
-            strcpy(one_cmd, token);
-            while((token = strtok(NULL, delim)) != NULL){
+            //extract the remainder and put it back where it was, along with the line feed characters
                 strcat(cmds_left, token);
-                cmds_left[strlen(token+1)] = '\n';
-            }
-            
-            strcpy(*node_bffr, cmds_left);// keep the remainder
-            
-            break;                
-        } 
-        scan_ptr += bytes_read - 1;
-        
-        bytes_left = MAX_MSG_LENGTH - bytes_read;
-        if (*(scan_ptr) == '\n') break;
-    }    
+                strcat(cmds_left, '\n');
+        }
+                    
+        strcpy(*node_bffr, cmds_left);// keep the remainder            
+    }
+    else{
+        if(token != NULL){
 
-    return one_cmd;
+            // no message found
+            // store the remainder in the node's buffer and return NULL
+            strcat(one_cmd, token); 
+            strcpy(*node_bffr, one_cmd);
+            return NULL;
+        } 
+    }
+    if(msg_found == 1) return one_cmd;
+    return NULL;
+                             
 }

@@ -193,7 +193,7 @@ int main(int argc, char **argv){
 
     nodesLinkedlist_t *aux;
 
-    char *ptr_bffr;              // pointer to buffer, to use with read operation;
+    char *message;              // pointer to buffer, to use with read operation;
         
     FD_ZERO(&my_node->crr_scks);                              // Set the set of FD's to zero
     FD_SET(STDIN_FILENO, &my_node->crr_scks);                 // add stdin(keyboard input) to FD set    
@@ -279,15 +279,9 @@ int main(int argc, char **argv){
                 // read a message from a node
                 
                 else{
-                    memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'
-                    ptr_bffr = buffer;
-                    nleft = MAX_MSG_LENGTH;     //last byte needs to be free for '\0'
-
-                    while (((nread = read(fd_itr, ptr_bffr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
-                        ptr_bffr += nread - 1;
-                        nleft = MAX_MSG_LENGTH;
-                        if (*(ptr_bffr) == '\n') break;
-                    }
+                    memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'                    
+                    
+                    nread = read(fd_itr, buffer, MAX_MSG_LENGTH - 1);
 
                     if (nread == -1) {
                         printf("Error in read: %s\n", strerror(errno));
@@ -493,10 +487,43 @@ int main(int argc, char **argv){
                         FD_CLR(fd_itr, &(my_node->crr_scks));
                     }
                     else{                        
-                        printf("Message read from a node: %s\n", buffer);
-                        if(parse_tcp(my_node, buffer, &fd_itr) == 1){
-                            printf("Error in main: failed to parse a message\n");
+    
+                        if(fd_itr == my_node->extern_node->node_fd){
+
+                            // printf("Message read from %s/%s:\n", my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
+                            // printf("%s\n", buffer);
+
+                            while((message = parseNstore(&buffer, &(my_node->extern_node->node_buff), my_node->extern_node->node_fd)) != NULL){
+
+                                if(parse_tcp(my_node, message, &fd_itr) == 1){
+                                    printf("Error in main: failed to parse a message\n");
+                                }
+                            }
+
+                        }else{
+
+                            // search the intern node with the file descriptor
+
+                            aux = my_node->internals_list;
+
+                            while(aux != NULL){
+
+                                if(aux->node->node_fd == fd_itr) break;
+                                aux = aux->next;
+
+                            }
+
+                            // printf("Message read from the : %s/%s\n", aux->node->node_addr, aux->node->tcp_port);
+                            // printf("%s\n", buffer);
+
+                            while((message = parseNstore(&buffer, &(aux->node->node_addr), aux->node->node_fd)) != NULL){
+
+                                if(parse_tcp(my_node, message, &fd_itr) == 1){
+                                    printf("Error in main: failed to parse a message\n");
+                                }
+                            }
                         }
+
                     }//else                    
                 }//else (read a message from a node)
             }//if(fdisset)

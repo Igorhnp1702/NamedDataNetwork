@@ -35,6 +35,9 @@ char *tcp_port;  // tcp port of the node; integer from 0 to 65 536
 char *node_addr; // IPv4 address with undefined size
 char *node_buff; // buffer to store unfinished mesages
 int  node_fd;   // the file descriptor assigned to this node
+int  safe_flag;
+int  entry_flag;
+int  msg_object_flag;
 
 } nodeinfo_t;
 
