@@ -46,6 +46,10 @@ ${OBJDIR}ndn_messages.o: ${SRCDIR}ndn_messages.c ${SRCDIR}ndn_messages.h ${SRCDI
 clean:	
 	rm -f ${OBJFILES}
 
+all: 
+	make clean
+	make ndn
+
 cleanall:
 	rm -f ${OBJFILES} ${APPNAME}
 

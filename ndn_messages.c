@@ -411,7 +411,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
             printf("\nMessage received from a new intern neighbor:\n");
             printf("%s\n", msg);
 
-            if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network answer with SAFE, followed by an ENTRY
+            if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network. Answer with SAFE, followed by an ENTRY
 
                 //new intern
                 new_internal = NULL;
@@ -519,7 +519,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 
                 
                 printf("\nMessage received from %s | %s:\n", slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-                printf("%s\n", msg);
+                printf("%s\n", msg);                
                  
             }            
             else{
@@ -530,7 +530,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 while(aux != NULL){
                             
                     if(aux->node->node_fd == *src_fd){
-                        printf("Internal node disconected: %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
+                        printf("Internal node converted to external: %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
                         break;
                     }
                     aux = aux->next;
@@ -538,20 +538,23 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
             }        
 
             printf("Updating the backup neighbor...\n\n");
-            
-            
+                        
             memset(slf_node->backup_tcp, 0, MAX_TCP_UDP_CHARS * sizeof(*slf_node->backup_tcp));
             memset(slf_node->backup_addr, 0, MAX_ADDRESS_SIZE * sizeof(*slf_node->backup_addr));
-
                        
             strcpy(slf_node->backup_tcp, tcp_cmd);
             strcpy(slf_node->backup_addr, ip_cmd);
 
+            if((strcmp(slf_node->backup_addr, slf_node->personal_addr)) == 0 &&
+                (strcmp(slf_node->backup_tcp, slf_node->personal_tcp)) == 0){
+
+                slf_node->anchorflag = 1;
+            }
+
             printf("New backup neighbor:\n\n");                    
             printf("Adress: %s\nPort: %s\n\n",                         
             slf_node->backup_addr, 
-            slf_node->backup_tcp);
-            
+            slf_node->backup_tcp);            
             
         }
         else{
@@ -573,13 +576,12 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 }
 
 char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
-
-    ssize_t bytes_read;               // number of bytes read from a read operation
-    ssize_t bytes_left;               // number of bytes left to fill the buffer capacity
+    
     char *str_ptr;
     const char delim[2] = "\n";
     char *token;
-    char one_cmd[MAX_MSG_LENGTH];   memset(one_cmd, 0, MAX_MSG_LENGTH);
+    char *one_cmd = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));   
+    memset(one_cmd, 0, MAX_MSG_LENGTH);
     char cmds_left[2*MAX_MSG_LENGTH]; memset(one_cmd, 0, MAX_MSG_LENGTH);
     int msg_found = 0;
 
@@ -590,7 +592,7 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
         if(((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token=strtok(*node_bffr,delim)) != NULL)){  // if there's a full message, store it
             
             msg_found = 1;
-            snprintf(one_cmd, sizeof(one_cmd),"%s",token);
+            snprintf(one_cmd, MAX_MSG_LENGTH,"%s",token);
             
             //strtok modifies *node_bffr, we need to restore it
 
@@ -600,14 +602,14 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
             
                 //extract the remainder and put it back where it was, along with the line feed characters
                     strcat(cmds_left, token);
-                    strcat(cmds_left, '\n');
+                    strcat(cmds_left, "\n");
                 }
             }
             if((token = strtok(NULL, delim)) != NULL){ //after strchr returns NULL, there is still the unfinished message to extract
             
                 //extract the remainder and put it back where it was, along with the line feed characters
                     strcat(cmds_left, token);
-                    strcat(cmds_left, '\n');
+                    strcat(cmds_left, "\n");
             }
                         
             strcpy(*node_bffr, cmds_left);// keep the remainder
@@ -617,7 +619,7 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
             // try to concatenate with the contents from the file descriptor
             // this guy shouldn't have the \n character
 
-            if(token != NULL) snprintf(one_cmd, sizeof(one_cmd),"%s",token);
+            if(token != NULL) snprintf(one_cmd, MAX_MSG_LENGTH,"%s",token);
         }         
     
         if(msg_found == 1){ 
@@ -647,14 +649,14 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
         
                 //extract the remainder and put it back where it was, along with the line feed characters
                 strcat(cmds_left, token);
-                strcat(cmds_left, '\n');
+                strcat(cmds_left, "\n");
             }
         }
         if((token = strtok(NULL, delim)) != NULL){ //after strchr returns NULL, there is still the unfinished message to extract
         
             //extract the remainder and put it back where it was, along with the line feed characters
                 strcat(cmds_left, token);
-                strcat(cmds_left, '\n');
+                strcat(cmds_left, "\n");
         }
                     
         strcpy(*node_bffr, cmds_left);// keep the remainder            

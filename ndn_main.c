@@ -184,11 +184,11 @@ int main(int argc, char **argv){
       
     int select_ctrl;
     int fd_itr = 0;              // an iterator to go through the FD set
-    char buffer[MAX_MSG_LENGTH]; // buffer to receive msg and cmd
-    char msg_type[MAX_MSG_CMD_SIZE];
+    char *buffer; // buffer to receive msg and cmd
+    buffer = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));
+    //char msg_type[MAX_MSG_CMD_SIZE];
         
-    ssize_t nread;               // number of bytes read from a read operation
-    ssize_t nleft;               // number of bytes left to fill the buffer capacity
+    ssize_t nread;               // number of bytes read from a read operation    
     int new_fd;                  // a file descriptor to receive the "NEW" message and extract the id of the node
 
     nodesLinkedlist_t *aux;
@@ -250,7 +250,7 @@ int main(int argc, char **argv){
                 
                 // read and process user input
                 if (fd_itr == STDIN_FILENO) {
-                    memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'                                         
+                    memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'                                         
                     fgets(buffer, MAX_MSG_LENGTH-1, stdin);
                     printf("\n_________________________________________________________________\n");
                     printf("Handling your command...");
@@ -279,7 +279,7 @@ int main(int argc, char **argv){
                 // read a message from a node
                 
                 else{
-                    memset(&buffer, 0, sizeof(buffer)); //set the buffer to '\0'                    
+                    memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'                    
                     
                     nread = read(fd_itr, buffer, MAX_MSG_LENGTH - 1);
 
@@ -289,7 +289,7 @@ int main(int argc, char **argv){
                     }                    
                     else if (nread == 0) {  //the fd is disconnected
                         
-                        memset(&buffer, 0, sizeof(buffer));
+                        memset(buffer, 0, MAX_MSG_LENGTH);
                         
                         if (fd_itr == my_node->extern_node->node_fd) {    //External neighbor disconnected
 
@@ -315,71 +315,71 @@ int main(int argc, char **argv){
                                     printf("An intern node will be picked to be an anchor with you, if available\n");
                                     my_node->anchorflag = 1;
                                     close(my_node->extern_node->node_fd);
-                                    my_node->extern_node->node_fd = -1;
-                                    
+                                    my_node->extern_node->node_fd = -1;                                    
                                 }
-                                else{
-                                    printf("Expecting SAFE\n");
+                                //printf("Expecting SAFE\n");
+                                // else{
                                     
-                                    while (((nread = read(my_node->extern_node->node_fd, ptr_bffr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
-                                        ptr_bffr += nread - 1;
-                                        nleft = MAX_MSG_LENGTH;
-                                        if (*(ptr_bffr) == '\n') break;
-                                    }                                                                        
+                                    
+                                //     while (((nread = read(my_node->extern_node->node_fd, ptr_bffr, MAX_MSG_LENGTH - 1)) > 0) && (nread < nleft)) { //read msg to buffer
+                                //         ptr_bffr += nread - 1;
+                                //         nleft = MAX_MSG_LENGTH;
+                                //         if (*(ptr_bffr) == '\n') break;
+                                //     }                                                                        
                             
-                                    if (nread == -1) {
-                                        printf("Error in main: read returned %s while reading SAFE message.\n", strerror(errno));
-                                        printf("An intern node will be picked to be an anchor with you, if available\n");
-                                        my_node->anchorflag = 1;
-                                        close(my_node->extern_node->node_fd);
-                                        my_node->extern_node->node_fd = -1;
-                                        continue;
+                                //     if (nread == -1) {
+                                //         printf("Error in main: read returned %s while reading SAFE message.\n", strerror(errno));
+                                //         printf("An intern node will be picked to be an anchor with you, if available\n");
+                                //         my_node->anchorflag = 1;
+                                //         close(my_node->extern_node->node_fd);
+                                //         my_node->extern_node->node_fd = -1;
+                                //         continue;
                                         
-                                    }
+                                //     }
 
-                                    sscanf(buffer, "%s", msg_type);
-                                    if(strcmp(msg_type, safe_str) != 0){
-                                        printf("Error in main: new extern did not send SAFE message\n");
-                                        printf("An intern node will be picked to be an anchor with you, if available\n");
-                                        printf("Connection with new extern was closed\n");
-                                        my_node->anchorflag = 1;            
-                                        close(my_node->extern_node->node_fd);
-                                        my_node->extern_node->node_fd = -1;
-                                        continue;
-                                    }
-                                    printf("Message received %s\n", buffer);
+                                //     sscanf(buffer, "%s", msg_type);
+                                //     if(strcmp(msg_type, safe_str) != 0){
+                                //         printf("Error in main: new extern did not send SAFE message\n");
+                                //         printf("An intern node will be picked to be an anchor with you, if available\n");
+                                //         printf("Connection with new extern was closed\n");
+                                //         my_node->anchorflag = 1;            
+                                //         close(my_node->extern_node->node_fd);
+                                //         my_node->extern_node->node_fd = -1;
+                                //         continue;
+                                //     }
+                                //     printf("Message received %s\n", buffer);
 
-                                    strcpy(my_node->extern_node->node_addr, my_node->backup_addr);
-                                    strcpy(my_node->extern_node->tcp_port, my_node->backup_tcp);
+                                //     strcpy(my_node->extern_node->node_addr, my_node->backup_addr);
+                                //     strcpy(my_node->extern_node->tcp_port, my_node->backup_tcp);
 
-                                    // try to get the new backup node
+                                //     // try to get the new backup node
 
-                                    if((parse_tcp(my_node, buffer, &(my_node->extern_node->node_fd))) == 1 ){
-                                        printf("Error in main: Failed to read the new extern node's interface\n");
-                                        printf("Connection with new extern was closed\n");            
-                                        close(my_node->extern_node->node_fd);
-                                        my_node->extern_node->node_fd = -1;
-                                        continue;
-                                    }                                                                                                                                                                                                                        
+                                //     if((parse_tcp(my_node, buffer, &(my_node->extern_node->node_fd))) == 1 ){
+                                //         printf("Error in main: Failed to read the new extern node's interface\n");
+                                //         printf("Connection with new extern was closed\n");            
+                                //         close(my_node->extern_node->node_fd);
+                                //         my_node->extern_node->node_fd = -1;
+                                //         continue;
+                                //     }                                                                                                                                                                                                                        
                                     
-                                    // // send safe to everybody else
+                                //     // // send safe to everybody else
 
-                                    // aux = my_node->internals_list;
+                                //     // aux = my_node->internals_list;
 
-                                    // while(aux != NULL){
+                                //     // while(aux != NULL){
                                     
-                                    //     if(strcmp(send_safe(aux->node->node_fd, my_node->extern_node->node_addr, my_node->extern_node->tcp_port), "1") != 0){
-                                    //         printf("Error in send_safe: failed to send safe message to %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
-                                    //     }
-                                    //     aux = aux->next;
-                                    // }
+                                //     //     if(strcmp(send_safe(aux->node->node_fd, my_node->extern_node->node_addr, my_node->extern_node->tcp_port), "1") != 0){
+                                //     //         printf("Error in send_safe: failed to send safe message to %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
+                                //     //     }
+                                //     //     aux = aux->next;
+                                //     // }
                                     
-                                    if (strcmp(my_node->personal_addr, my_node->backup_addr) == 0 &&
-                                        strcmp(my_node->personal_tcp, my_node->backup_tcp) == 0) {
+                                //     if (strcmp(my_node->personal_addr, my_node->backup_addr) == 0 &&
+                                //         strcmp(my_node->personal_tcp, my_node->backup_tcp) == 0) {
                                         
-                                        my_node->anchorflag = 1;
-                                    }
-                                }
+                                //         my_node->anchorflag = 1;
+                                //     }
+                                // }
                                                         
                             }
                             if (my_node->n_internals > 1 && my_node->anchorflag == 1) { //has internals beyond the anchor partner
@@ -395,7 +395,19 @@ int main(int argc, char **argv){
                                         contact_copy(my_node->extern_node, aux->node);
                                         my_node->extern_node->node_fd = aux->node->node_fd;
 
-                                        //send him an entry message followed by a safe message
+                                        //send him a safe message followed by an entry message
+                                        printf("Sending %s %s %s\n", safe_str, aux->node->node_addr, aux->node->tcp_port);
+
+                                        if((strcmp(send_safe(my_node->extern_node->node_fd, aux->node->node_addr, aux->node->tcp_port), "1")) != 0){
+                                            
+                                            printf("Failed to convert intern into extern. Connection closed.\n");
+                                            FD_CLR(aux->node->node_fd, &(my_node->crr_scks));
+                                            aux = removenode(aux, aux->node->node_fd); // head = head->next
+                                            my_node->n_internals--;
+                                            close(my_node->extern_node->node_fd);
+                                            my_node->extern_node->node_fd = -1;
+                                            continue;
+                                        }  
 
                                         printf("Sending %s %s %s\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
 
@@ -411,18 +423,7 @@ int main(int argc, char **argv){
                                             continue;
                                         }
 
-                                        printf("Sending %s %s %s\n", safe_str, aux->node->node_addr, aux->node->tcp_port);
-
-                                        if((strcmp(send_safe(my_node->extern_node->node_fd, aux->node->node_addr, aux->node->tcp_port), "1")) != 0){
-                                            
-                                            printf("Failed to convert intern into extern. Connection closed.\n");
-                                            FD_CLR(aux->node->node_fd, &(my_node->crr_scks));
-                                            aux = removenode(aux, aux->node->node_fd); // head = head->next
-                                            my_node->n_internals--;
-                                            close(my_node->extern_node->node_fd);
-                                            my_node->extern_node->node_fd = -1;
-                                            continue;
-                                        }                                        
+                                                                              
                                         printf("Conversion successfull\n");
                                         break;
                                     }
