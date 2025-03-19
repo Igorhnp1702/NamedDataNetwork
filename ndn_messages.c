@@ -575,7 +575,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
     return fail_flag;
 }
 
-char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
+char *parseNstore(char msg_bffr[], char **node_bffr, int fd){
     
     char *str_ptr;
     const char delim[2] = "\n";
@@ -634,9 +634,9 @@ char *parseNstore(char **msg_bffr, char **node_bffr, int fd){
         //concatenate the contents in the file descriptor with the contents in the buffer
     }
                        
-    str_ptr = *msg_bffr;
+    str_ptr = msg_bffr;
     //Find msgs in msg_buffer
-    if (((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token = strtok(*msg_bffr,delim)) != NULL)) { // \n found
+    if (((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token = strtok(msg_bffr,delim)) != NULL)) { // \n found
     
         strcat(one_cmd, token); // here, token should be the missing half of one_cmd
         msg_found = 1;

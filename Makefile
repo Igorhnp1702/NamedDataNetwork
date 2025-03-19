@@ -20,8 +20,6 @@ OBJDIR =
 OBJFILES = ${OBJDIR}ndn_main.o ${OBJDIR}ndn_node.o ${OBJDIR}ndn_commands.o  ${OBJDIR}ndn_messages.o 
 
 
-all: ndn
-
 ndn: ${OBJFILES}
 	${CC} ${CFLAGS} -o ${APPNAME} ${OBJFILES}
 
@@ -49,6 +47,10 @@ clean:
 all: 
 	make clean
 	make ndn
+
+compclean:
+	make ndn
+	make clean
 
 cleanall:
 	rm -f ${OBJFILES} ${APPNAME}

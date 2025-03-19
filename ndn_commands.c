@@ -504,8 +504,8 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
 
 
     if (strcmp(connectIP, "0.0.0.0") == 0) {  //First node of the network
-        personal->anchorflag = 1;             //!confirmar
-        personal->extern_node = contact_init(personal->extern_node);                
+        personal->anchorflag = 1;             //!confirmar        
+        personal->network_flag = 1;                
         
     }
     else{
@@ -518,11 +518,10 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
             printf("Error in direct join: Failed to join the network\n");                                    
             return 1;
         }
-        else{
-            printf("\nENTRY message delivered to %s | %s\n", connectIP, connectTCP);
-            printf("Updating external neighbor\n");
-            free(return_msg);
-        }
+        
+        printf("\nENTRY message delivered to %s | %s\n", connectIP, connectTCP);
+        printf("Updating external neighbor\n");
+        free(return_msg);        
 
         //personal->extern_node = contact_init(personal->extern_node);                
         strcpy(personal->extern_node->tcp_port, connectTCP);

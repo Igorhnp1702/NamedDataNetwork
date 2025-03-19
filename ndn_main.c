@@ -184,14 +184,18 @@ int main(int argc, char **argv){
       
     int select_ctrl;
     int fd_itr = 0;              // an iterator to go through the FD set
-    char *buffer; // buffer to receive msg and cmd
-    buffer = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));
+    char buffer[MAX_MSG_LENGTH]; // buffer to receive msg and cmd
+    
     //char msg_type[MAX_MSG_CMD_SIZE];
         
     ssize_t nread;               // number of bytes read from a read operation    
     int new_fd;                  // a file descriptor to receive the "NEW" message and extract the id of the node
 
     nodesLinkedlist_t *aux;
+    nodeinfo_t *node_aux = NULL;
+
+    node_aux = contact_init(node_aux);
+
 
     char *message;              // pointer to buffer, to use with read operation;
         
@@ -244,7 +248,7 @@ int main(int argc, char **argv){
         printf("Activity found\n");
 
         //Go through all FDs and see which ones have activity
-        for (fd_itr = 0; fd_itr < my_node->max_fd + 1; fd_itr++){
+        for (fd_itr = 0; fd_itr <= my_node->max_fd + 1; fd_itr++){
 
             if(FD_ISSET(fd_itr, &my_node->rdy_scks)){
                 
@@ -270,6 +274,11 @@ int main(int argc, char **argv){
                     }                    
                     else{
                         printf("Accepted connection. Expecting ENTRY\n");       // ENTRY message will come from newfd
+
+                        // add new intern node
+                        node_aux->node_fd = new_fd;
+                        my_node->internals_list = insertnode(my_node->internals_list, node_aux);
+
                         FD_SET(new_fd, &my_node->crr_scks);                     // prepare to read the ENTRY message
                         if (new_fd > my_node->max_fd) my_node->max_fd = new_fd;
                     }
@@ -289,7 +298,7 @@ int main(int argc, char **argv){
                     }                    
                     else if (nread == 0) {  //the fd is disconnected
                         
-                        memset(buffer, 0, MAX_MSG_LENGTH);
+                        //memset(buffer, 0, MAX_MSG_LENGTH);
                         
                         if (fd_itr == my_node->extern_node->node_fd) {    //External neighbor disconnected
 
@@ -494,7 +503,7 @@ int main(int argc, char **argv){
                             // printf("Message read from %s/%s:\n", my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                             // printf("%s\n", buffer);
 
-                            while((message = parseNstore(&buffer, &(my_node->extern_node->node_buff), my_node->extern_node->node_fd)) != NULL){
+                            while((message = parseNstore(buffer, &(my_node->extern_node->node_buff), fd_itr)) != NULL){
 
                                 if(parse_tcp(my_node, message, &fd_itr) == 1){
                                     printf("Error in main: failed to parse a message\n");
@@ -517,7 +526,7 @@ int main(int argc, char **argv){
                             // printf("Message read from the : %s/%s\n", aux->node->node_addr, aux->node->tcp_port);
                             // printf("%s\n", buffer);
 
-                            while((message = parseNstore(&buffer, &(aux->node->node_addr), aux->node->node_fd)) != NULL){
+                            while((message = parseNstore(buffer, &(aux->node->node_buff), fd_itr)) != NULL){
 
                                 if(parse_tcp(my_node, message, &fd_itr) == 1){
                                     printf("Error in main: failed to parse a message\n");
