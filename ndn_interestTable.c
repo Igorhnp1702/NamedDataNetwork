@@ -79,6 +79,29 @@ void clear_interest_table(InterestTable *table) {
     }
 }
 
+// Check if all interfaces are closed
+int all_interfaces_closed(InterestTable *table, char *name) {
+    
+    if (table == NULL || name == NULL) {
+        return 1; // Return all interfaces are closed if the table or name is NULL
+    }
+    
+
+    for (int i = 0; i < MAX_ENTRIES; i++) {
+        // Find the interest entry with the given object name
+        if (table->entries[i].active && strcmp(table->entries[i].name, name) == 0) {
+            for (int j = 0; j < MAX_INTERFACES; j++) {
+                if (table->entries[i].interfaces[j] != CLOSED) {
+                    return 0; // At least one interface is not closed
+                }
+            }
+            return 1; // All interfaces are closed
+        }
+    }
+
+    return 1; // Consider all interfaces closed if the interest is not found
+}
+
 // Search for an interest in the table
 int search_interest(InterestTable *table, char *name) {
     for (int i = 0; i < MAX_ENTRIES; i++) {
@@ -124,7 +147,7 @@ InterfaceState search_interest_interface_state(InterestTable *table, char *name,
     return CLOSED; // Return closed if the interest is not found
 }
 
-// Mostrar todas as entradas da tabela
+// Show all entries in the interest table
 void show_interest_table(const InterestTable *table) {
     printf("Interest Table:\n");
     for (int i = 0; i < MAX_ENTRIES; i++) {

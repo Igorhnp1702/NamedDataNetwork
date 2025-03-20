@@ -545,14 +545,46 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
     if(strcmp(cmd, interest_msg_str) == 0){
 
         if(sscanf(msg, "%*s %s",object_buff) == 1){
-            
+
+            printf("Received INTEREST: %s\n", object_buff);
             // search the object in the cache
+            if (search_cache(slf_node->cache, object_buff)) {
+                // object in cache, send object message
+                return_msg = send_object(src_node->node_fd, object_buff);
+                if (return_msg != NULL) {
+                    free(return_msg);
+                    return_msg = NULL;
+                }
+            } else {
 
-            // object in cache, send object message
-
-            // object not in cache and you have other neighbors, send interest message to them
-
-            // object not in cach and you have no other neighbors, send noobject message to the source
+                // object not in cache...
+                if (has_neighbors(slf_node->internals_list)) {
+                    // ...and you have other neighbors
+                    if (!search_interest(slf_node->interest_table, object_buff)) {
+                        // ...and not in interest table
+                        add_interest(slf_node->interest_table, object_buff, WAITING);
+                        // send interest message to neighbors
+                        forward_interest(slf_node, object_buff, src_node->node_fd);
+                    }
+                    else {
+                        // Interest already in the table
+                        // Update a interface para ANSWER
+                        // so that we know that we have to send the object through this interface
+                        int waiting_interface = search_waiting_interface(slf_node->interest_table, object_buff);
+                        if (waiting_interface != -1) {
+                            update_interface_state(slf_node->interest_table, object_buff, waiting_interface, ANSWER);
+                        }
+                    }
+                
+                } else {
+                    // ...and you have no other neighbors, send noobject message to the source
+                    return_msg = send_noobject(src_node->node_fd, object_buff);
+                    if (return_msg != NULL) {
+                        free(return_msg);
+                        return_msg = NULL;
+                    }
+                }
+            }
         }else{
         
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
@@ -565,11 +597,28 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
         if(sscanf(msg, "%*s %s", object_buff) == 1){
             
-            // check interest table to see if someone is waiting for an answer from me           
+            printf("Received OBJECT: %s\n", object_buff);
+            // check interest table to see if someone is waiting for an answer from me 
+            int waiting_interface = search_waiting_interface(slf_node->interest_table, object_buff);
+            if (waiting_interface != -1) {
+                // if someone is waiting for the object
+                // send object message to that node
+                forward_object(slf_node, object_buff, src_node->node_fd);
 
-            // if someone is waiting for the object, send object message to that node and place the object in cache
+                // and place the object in cache
+                add_to_cache(slf_node->cache, object_buff);
 
-        }else{
+                // remove interest from table
+                remove_interest(slf_node->interest_table, object_buff);
+            }
+            else {
+                // if no one is waiting for the object
+                // place the object in cache
+                add_to_cache(slf_node->cache, object_buff);
+                //ou printf("No interfaces waiting for OBJECT: %s\n", object_buff);
+            }
+        }
+        else{
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
             return ++fail_flag;
         }
@@ -579,11 +628,27 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
         if(sscanf(msg, "%*s %s",object_buff) == 1){
             
+            printf("Received NOOBJECT: %s\n", object_buff);
             // check interest table to see if someone is waiting for an answer from me           
+            int waiting_interface = search_waiting_interface(slf_node->interest_table, object_buff);
+            if (waiting_interface != -1) {
+                // if someone is waiting for the object
+                // send noobject message to that node
+                update_interface_state(slf_node->interest_table, object_buff, src_node->node_fd, CLOSED);
 
-            // if someone is waiting for the object, send noobject message to that node
-
-        }else {
+                // check if all interfaces are closed
+                if (all_interfaces_closed(slf_node->interest_table, object_buff)) {
+                    // send noobject message to answer interface
+                    forward_noobject(slf_node, object_buff, src_node->node_fd);
+                    // remove interest from table
+                    remove_interest(slf_node->interest_table, object_buff);
+                }
+            }
+            else {
+                printf("No interfaces waiting for NOOBJECT: %s\n", object_buff);
+            }
+        }
+        else {
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
             return ++fail_flag;
         }

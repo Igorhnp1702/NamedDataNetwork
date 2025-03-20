@@ -47,6 +47,7 @@ int add_interest(InterestTable *table, char *name, InterfaceState initial_state)
 int remove_interest(InterestTable *table, char *name);
 void update_interface_state(InterestTable *table, char *name, int interface_index, InterfaceState state);
 void clear_interest_table(InterestTable *table);
+int all_interfaces_closed(InterestTable *table, char *name);
 int search_interest(InterestTable *table, char *name);
 int search_waiting_interface(InterestTable *table, char *name);
 InterfaceState search_interest_interface_state(InterestTable *table, char *name, int interface_index);
