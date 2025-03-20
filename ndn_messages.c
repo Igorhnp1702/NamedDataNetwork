@@ -31,6 +31,7 @@
 
 // project libraries
 #include "ndn_messages.h"
+#include "ndn_interestTable.h"
 
 
  char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net){ // register the nod    
