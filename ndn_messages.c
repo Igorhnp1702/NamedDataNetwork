@@ -612,7 +612,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 
                 if (return_msg != NULL) {
 
-                    printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
+                    printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
                     printf("%s %s %s\n", safe_str, ip_cmd, tcp_cmd);
                     
                     free(return_msg);
@@ -623,6 +623,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                     printf("Error in parse_tcp.\n");
                     printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
                     slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                    slf_node->n_internals--;
                     close(src_node->node_fd);
                     FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
                     
@@ -636,7 +637,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 
                 if (return_msg != NULL) {
 
-                    printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
+                    printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
                     printf("%s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                     
                     free(return_msg);
@@ -647,6 +648,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                     printf("Error in parse_tcp.\n");
                     printf("Error connecting to new external: Failed to send ENTRY message. Connection closed\n");
                     slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                    slf_node->n_internals--;
                     close(src_node->node_fd);
                     FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
                     return ++fail_flag;                        
@@ -666,10 +668,10 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 slf_node->n_internals++;
                 
                 printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-                return_msg = send_safe(src_node->node_fd, ip_cmd, tcp_cmd);
+                return_msg = send_safe(src_node->node_fd, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 
                 if (strcmp(return_msg, "1") == 0) {
-                    printf("\nMessage sent to [ %s | %s ]:\n", ip_cmd, tcp_cmd);
+                    printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
                     printf("%s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                     if (return_msg != NULL){ //reset the pointer to the received message
                         free(return_msg);
@@ -704,7 +706,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             if(src_node->node_fd == slf_node->extern_node->node_fd){ // The message reached me through the extern node
                 
                 
-                printf("\nMessage received from [ %s | %s ]:\n", slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                printf("\nMessage received from [%s | %s]:\n", slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 printf("%s\n", msg);                
                  
             }            
@@ -716,7 +718,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 while(aux != NULL){
                             
                     if(aux->node->node_fd == src_node->node_fd){
-                        printf("Internal node converted to external: [ %s | %s ]\n", aux->node->node_addr, aux->node->tcp_port);
+                        printf("Internal node converted to external: [%s | %s]\n", aux->node->node_addr, aux->node->tcp_port);
                         break;
                     }
                     aux = aux->next;

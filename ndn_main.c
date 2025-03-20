@@ -301,16 +301,18 @@ int main(int argc, char **argv){
                         if (fd_itr == my_node->extern_node->node_fd) {    //External neighbor disconnected
 
                             
-                            printf("External neighbor [ %s | %s ] disconnected!\n",
+                            printf("External neighbor [%s | %s] disconnected!\n",
                                  my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                             
                             my_node->internals_list = removenode(my_node->internals_list, my_node->extern_node->node_fd);
+                            my_node->n_internals--;
                             
+                            close(my_node->extern_node->node_fd);
                             my_node->extern_node->node_fd = -1;   // Reset client_fd to -1                            
                             
                             if (my_node->anchorflag == 0) { //not an anchor                                                                                                                        
                                 
-                                //Sends ENTRY message , receives SAFE response and updates backup node
+                                //Sends ENTRY message 
                                 
                                 // Until a successfull connection is achieved with a new extern node, try to send an entry to someone
 
@@ -326,7 +328,7 @@ int main(int argc, char **argv){
                                     close(my_node->extern_node->node_fd);
                                     my_node->extern_node->node_fd = -1;                                    
                                 }
-                                printf("Expecting SAFE\n");
+                                else printf("Expecting SAFE\n");
                                 
                                 // else{
                                     
@@ -392,7 +394,7 @@ int main(int argc, char **argv){
                                 // }
                                                         
                             }
-                            if (my_node->n_internals > 1 && my_node->anchorflag == 1) { //has internals beyond the anchor partner
+                            if(my_node->n_internals > 0 && my_node->anchorflag == 1) { //has internals beyond the fallen anchor partner
                                 
                                 if(my_node->anchorflag == 1 && my_node->extern_node->node_fd == -1){ // is an anchor without the partner
 
@@ -426,7 +428,6 @@ int main(int argc, char **argv){
                                             my_node->extern_node->node_fd = -1;                                            
                                             continue;
                                         }
-
                                                                               
                                         printf("Conversion successfull\n");
                                         break;
@@ -434,7 +435,6 @@ int main(int argc, char **argv){
                                     
                                 }
                                 
-
                                 // send safe to everybody else
                                
                                 aux = my_node->internals_list;
@@ -444,7 +444,7 @@ int main(int argc, char **argv){
                                     if(aux->node->node_fd != my_node->extern_node->node_fd){
 
                                         if(strcmp(send_safe(aux->node->node_fd, my_node->backup_addr, my_node->backup_tcp), "1") != 0){
-                                            printf("Error in send safe: failed to send safe message to %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
+                                            printf("Error in send safe: failed to send safe message to [%s | %s]\n", aux->node->node_addr, aux->node->tcp_port);
                                         }
                                     }                                    
                                     aux = aux->next;
@@ -477,7 +477,7 @@ int main(int argc, char **argv){
                             while(aux != NULL){
                             
                                 if(aux->node->node_fd == fd_itr){
-                                    printf("Internal node disconected: [ %s | %s ]\n", aux->node->node_addr, aux->node->tcp_port);
+                                    printf("Internal node disconected: [%s | %s]\n", aux->node->node_addr, aux->node->tcp_port);
                                     break;
                                 }
                                 aux = aux->next;
@@ -488,8 +488,7 @@ int main(int argc, char **argv){
                             
                                 my_node->internals_list = removenode(my_node->internals_list, aux->node->node_fd);
                                 my_node->n_internals--;                            
-                            }
-
+                            }                            
                         }                               
                         
                         FD_CLR(fd_itr, &(my_node->crr_scks));

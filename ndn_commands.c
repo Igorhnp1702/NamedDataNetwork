@@ -220,7 +220,7 @@ void select_cmd(struct personal_node *personal, char *input){
         // if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
 
         //     printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-        //     show_names(&personal->queue_ptr); // show names of the personal node
+        
         //     return;
         // }
         
@@ -247,7 +247,7 @@ void select_cmd(struct personal_node *personal, char *input){
     //     if(strcmp(personal->persn_info->network, "") == 0)
         
     //     printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-    //     show_routing(personal->route_tab); // show routing table of the personal node
+    //     
     //     return;
 
     // }//else if si
@@ -294,6 +294,7 @@ void select_cmd(struct personal_node *personal, char *input){
         
         free_contact(&(personal->extern_node));
         free(personal);
+        printf("Exit executed successfully\n");
         exit(0);
 
     }//else if exit
@@ -494,14 +495,14 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
             return 1;
         }
         
-        printf("\nENTRY message delivered to %s | %s\n", connectIP, connectTCP);
+        printf("\nENTRY message delivered to [%s | %s]\n", connectIP, connectTCP);
         printf("Updating external neighbor\n");
         free(return_msg);        
 
         //personal->extern_node = contact_init(personal->extern_node);                
         strcpy(personal->extern_node->tcp_port, connectTCP);
         strcpy(personal->extern_node->node_addr, connectIP);
-        personal->extern_node->safe_flag = 1;
+        //personal->extern_node->safe_flag = 1;
         personal->network_flag = 1;
     }
     return 0;
@@ -931,7 +932,7 @@ int leave(struct personal_node *personal) {
 }//leave
 
 void help_menu() {
-        printf("*****************HELP MENU*****************\n\n");
+        printf("-----------------HELP MENU-----------------\n\n");
         printf("To use the application, insert one of the following commands:\n");
         printf("Note: curved brackets => valid abreviations; square brackets => arguments\n\n");
         printf("join (j) [desired network] \n");
@@ -945,6 +946,7 @@ void help_menu() {
         // printf("clear names (cn)\n");
         printf("leave (l)\n");
         printf("exit (x)\n");
+        printf("\n-------------------------------------------\n\n");
         return;
 }//help_menu
 

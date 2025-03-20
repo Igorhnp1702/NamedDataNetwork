@@ -87,7 +87,7 @@ struct personal_node *personal_init(struct personal_node *personal){
         printf("Error in personal_init: Failed to allocate memory. Process terminated\n");
         exit(1);
     }
-    personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
+    personal->anchorflag = 0;   // flag that says whether the node is an anchor or not
     personal->network_flag = 0;
     personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
@@ -149,7 +149,7 @@ struct personal_node *reset_personal(struct personal_node *personal){
     memset(personal->backup_addr, 0, MAX_ADDRESS_SIZE);
     memset(personal->backup_tcp, 0, MAX_TCP_UDP_CHARS);
 
-    personal->anchorflag = -1;   // flag that says whether the node is an anchor or not
+    personal->anchorflag = 0;   // flag that says whether the node is an anchor or not
     personal->network_flag = 0;
     personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
@@ -173,6 +173,10 @@ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
     strcpy(dest->node_buff, src->node_buff);
 
     dest->node_fd = src->node_fd;
+    dest->entry_flag = src->entry_flag;
+    dest->safe_flag = src->safe_flag;
+    dest->msg_object_flag = src->msg_object_flag;
+    
 
     return;
 }//contact_copy()
@@ -196,7 +200,9 @@ nodesLinkedlist_t *Listinit(nodesLinkedlist_t *head){
 
 nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
         
-    nodesLinkedlist_t *aux, *new_block;    
+    nodesLinkedlist_t *aux, *new_block;  
+    nodeinfo_t *node_copy = NULL;  
+    node_copy = contact_init(node_copy);
 
     // Write the info in memory
 
@@ -205,14 +211,10 @@ nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
         printf("Error in insertnode: Failed to allocate memory");
         exit(1);
     }
-    // if((new_block->node = (nodeinfo_t*)calloc(1, sizeof(nodeinfo_t))) == NULL){
-        
-    //     printf("Error in insertnode: Failed to allocate memory: process terminated");
-    //     exit(1);
-    // }
-    // contact_init(new_block->node);
-    // contact_copy(new_block->node, new_node);
-    new_block->node = new_node;
+    
+    
+    contact_copy(node_copy, new_node);
+    new_block->node = node_copy;
     new_block->next = NULL;
 
     if(head == NULL){
@@ -229,7 +231,7 @@ nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
     }
 
     aux->next = new_block;
-    printf("\nSuccessfully inserted %s | %s in a list\n", new_node->node_addr, new_node->tcp_port);
+    printf("\nSuccessfully inserted [%s | %s] in a list\n", new_node->node_addr, new_node->tcp_port);
     return head;
 
 }
@@ -246,7 +248,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 
 	if(head->node->node_fd == old_fd){ //if the head has the desired node
 
-		printf("\n%s | %s was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
+		printf("\n[%s | %s] was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
         aux = head;
 		head = head->next;            
 		free_contact(&(aux->node));		
@@ -260,13 +262,13 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 	
 	while(listptr != NULL){
 
-		if(listptr->next == NULL && listptr->node->node_fd == old_fd){
+		if(listptr->next == NULL && listptr->node->node_fd != old_fd){
 			printf("\nThe name was not found\n\n");
 			return head;
 		}
 		else if(listptr->node->node_fd == old_fd){ //first or last node, and it contains the fd
 
-			printf("\n%s | %s was removed from the internals list\n\n", listptr->node->node_addr, listptr->node->tcp_port);
+			printf("\n[%s | %s] was removed from the internals list\n\n", listptr->node->node_addr, listptr->node->tcp_port);
             aux = listptr;
 			listptr = listptr->next;			
 			free_contact(&(aux->node));
@@ -279,7 +281,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 		}		
 		else if(listptr->next->node->node_fd == old_fd){
 			
-			printf("\n%s | %s was removed from the internals list\n\n", listptr->next->node->node_addr, listptr->next->node->tcp_port);
+			printf("\n[%s | %s] was removed from the internals list\n\n", listptr->next->node->node_addr, listptr->next->node->tcp_port);
             aux = listptr->next;
 			listptr->next = listptr->next->next;			
 			free_contact(&(aux->node));
