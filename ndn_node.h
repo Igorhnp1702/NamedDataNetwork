@@ -13,7 +13,7 @@
 #define ndn_node_header
 
 
-
+#include "ndn_interestTable.h"
 
 /**************************************************************************
  * nodeinfo_t
@@ -91,7 +91,8 @@ char *udp_port;                     // UDP port of the server of nodes
 char *udp_address;                  // UDP address of the server of nodes
 fd_set rdy_scks;                    // set of file descriptors with activity to handle (rdy = ready)
 fd_set crr_scks;                    // set of file descriptors in use (crr = current)
-//objectQueue_t *queue_ptr;           // double linked list of the contents of the node
+// objectQueue_t *queue_ptr;           // double linked list of the contents of the node
+InterestTable *interest_table;      // table of interests
 nodeinfo_t *extern_node;            // contact of the extern neighbor node
 nodesLinkedlist_t *internals_list; // list of contacts of internal neighbors
 };

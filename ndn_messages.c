@@ -549,7 +549,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
             printf("Received INTEREST: %s\n", object_buff);
             // search the object in the cache
-            if (search_cache(slf_node->cache, object_buff)) {
+            if (search_cache(slf_node->queue_ptr, object_buff)) {
                 // object in cache, send object message
                 return_msg = send_object(src_node->node_fd, object_buff);
                 if (return_msg != NULL) {
@@ -607,7 +607,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 forward_object(slf_node, object_buff, src_node->node_fd);
 
                 // and place the object in cache
-                add_to_cache(slf_node->cache, object_buff);
+                add_to_cache(slf_node->queue_ptr, object_buff);
 
                 // remove interest from table
                 remove_interest(slf_node->interest_table, object_buff);
@@ -615,7 +615,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             else {
                 // if no one is waiting for the object
                 // place the object in cache
-                add_to_cache(slf_node->cache, object_buff);
+                add_to_cache(slf_node->queue_ptr, object_buff);
                 //ou printf("No interfaces waiting for OBJECT: %s\n", object_buff);
             }
         }
