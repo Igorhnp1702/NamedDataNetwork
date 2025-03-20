@@ -10,3 +10,21 @@
  ***********************************************************************************************/
 
 #include "ndn_interestTable.h"
+
+
+// inicializar
+
+
+// apagar tudo
+
+
+// apagar um elemento
+
+
+// adicionar um elemento
+
+
+// fechar o estado (resposta, espera, fechado)
+
+
+// procurar quem está à espera do objeto recebido
