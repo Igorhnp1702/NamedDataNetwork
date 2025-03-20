@@ -395,13 +395,118 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
 }
 
 
-// char *send_object(){
 
-// }
-
-// char *send_noobject(){
+char *send_interest(int fd, char *object_name) {
     
-// }
+    char *ptr;
+    char *buffer = NULL;
+
+    // Allocate Buffer's Memory
+    if ((buffer = (char *)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL) {
+        printf("Error in send_object: Failed to allocate memory. Process terminated.\n");
+        exit(1);
+    }
+
+    ssize_t nbytes, nleft, nwritten;
+    
+    sprintf(buffer, "%s %s\n", interest_msg_str, object_name);
+    ptr = buffer;
+    nbytes = strlen(buffer);
+    nleft = nbytes;
+
+    // Send the message
+    while (nleft > 0) {
+        nwritten = write(fd, ptr, nleft);
+        if (nwritten <= 0) {
+            printf("Send Object: Error in write\n");
+            free(buffer);
+            return NULL;
+        }
+        nleft -= nwritten;
+        ptr += nwritten;
+    }
+
+    memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
+    strcpy(buffer, "1"); //indicates that the message was sent
+
+    return buffer; // returning what was inside the file descriptor
+}
+
+char *send_object(int fd, char *object_name) {
+    
+    char *ptr;
+    char *buffer = NULL;
+
+    // Allocate Buffer's Memory
+    if ((buffer = (char *)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL) {
+        printf("Error in send_object: Failed to allocate memory. Process terminated.\n");
+        exit(1);
+    }
+
+    ssize_t nbytes, nleft, nwritten;
+    
+    sprintf(buffer, "%s %s\n", object_str, object_name);
+    ptr = buffer;
+    nbytes = strlen(buffer);
+    nleft = nbytes;
+
+    // Send the message
+    while (nleft > 0) {
+        nwritten = write(fd, ptr, nleft);
+        if (nwritten <= 0) {
+            printf("Send Object: Error in write\n");
+            free(buffer);
+            return NULL;
+        }
+        nleft -= nwritten;
+        ptr += nwritten;
+    }
+
+    memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
+    strcpy(buffer, "1"); //indicates that the message was sent
+
+    return buffer; // returning what was inside the file descriptor
+}
+
+char *send_noobject(int fd, char *object_name) {
+    
+    char *ptr;
+    char *buffer = NULL;
+
+    // Allocate Buffer's Memory
+    if ((buffer = (char *)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL) {
+        printf("Error in send_object: Failed to allocate memory. Process terminated.\n");
+        exit(1);
+    }
+
+    ssize_t nbytes, nleft, nwritten;
+    
+    sprintf(buffer, "%s %s\n", noobject_str, object_name);
+    ptr = buffer;
+    nbytes = strlen(buffer);
+    nleft = nbytes;
+
+    // Send the message
+    while (nleft > 0) {
+        nwritten = write(fd, ptr, nleft);
+        if (nwritten <= 0) {
+            printf("Send Object: Error in write\n");
+            free(buffer);
+            return NULL;
+        }
+        nleft -= nwritten;
+        ptr += nwritten;
+    }
+
+    memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
+    strcpy(buffer, "1"); //indicates that the message was sent
+
+    return buffer; // returning what was inside the file descriptor
+}
+
+
+
+
 
 int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 

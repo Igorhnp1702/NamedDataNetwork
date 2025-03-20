@@ -60,6 +60,12 @@ char* send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
 
 char *send_safe(int fd, char *ext_ip, char *ext_tcp);
 
+char *send_interest(int fd, char *object_name);
+
+char *send_object(int fd, char *object_name);
+
+char *send_noobject(int fd, char *object_name); 
+
 int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node);
 
 char *parseNstore(char msg_bffr[], char **node_bffr);
