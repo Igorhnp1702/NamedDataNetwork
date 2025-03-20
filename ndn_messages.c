@@ -141,20 +141,31 @@
  }
 
  
-char *server_inquiry(char *server_IP, char *server_UDP, char *net){// request the list of nodes in the network
+nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){// request the list of nodes in the network
 
     struct addrinfo srv_criteria, *srv_result;
     int fd, errflag;
     ssize_t cnt;
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
-    char *buffer = NULL;
-    if((buffer = (char*)calloc(MAX_NODESLIST, sizeof(char))) == NULL){
-        printf("Error in send_safe: Failed to allocate memory. process terminated\n");
-        exit(1);
-    }
+
+    nodesLinkedlist_t *serverlist = NULL; serverlist = Listinit(serverlist);    
+    nodeinfo_t *temp = NULL; temp = contact_init(temp);
+    
+    
     char inquiry[11]; // 5(nodes) + 1(space) + 3(net) + 1(\n) + 1(\0) = 11 
     memset(inquiry, 0, 11*sizeof(char));
+
+    char first_line[15]; memset(first_line, 0, 14*sizeof(char));
+    // 9(nodeslist) + 1(space) + 3(net) + 1(\n) + 1(\0)= 15
+
+    char max_nodeline[23]; memset(max_nodeline, 0, 22*sizeof(char));
+    //15(max ip) + 1(space) + 5(tcp) + 1(\n) + 1(\0) = 23
+
+    char nodeline_copy[23]; memset(nodeline_copy, 0, 23*sizeof(char));
+
+    char delim[2] = "\n";
+    char *one_line;
 
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
     if(fd == -1) return NULL;
@@ -176,20 +187,92 @@ char *server_inquiry(char *server_IP, char *server_UDP, char *net){// request th
     freeaddrinfo(srv_result);
 
     addrlen_conf = sizeof(struct sockaddr_in);
-    cnt = recvfrom(fd, buffer, MAX_NODESLIST, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
+    
+    cnt = recvfrom(fd, first_line, 14, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
+    
     if(cnt == -1){
         printf("Failed to get the list of nodes from the server\n");
         return NULL;
     }
-    
-    buffer[cnt] = '\0';
 
-    if (strcmp(inet_ntoa(addr_conf.sin_addr), server_IP) != 0) { //Verification
-        strcpy(buffer, "0");
+    printf("Response from the node server\n\n");
+    printf("%s", first_line);
+
+    while((cnt = recvfrom(fd, max_nodeline, 22, 0,(struct sockaddr *)&addr_conf, &addrlen_conf)) > 0){
+
+        if((strcmp(nodeline_copy, "")) == 0){
+
+            // nothing to concatenate
+
+            if((strchr(max_nodeline, '\n')) != NULL){
+
+                //full line found
+                one_line = strtok(max_nodeline, delim);
+                if((sscanf(one_line, "%s %s", temp->node_addr, temp->tcp_port)) == 2){
+
+                    serverlist = insertnode(serverlist, temp);
+                    printf("%s %s\n", temp->node_addr, temp->tcp_port);                    
+                }else{
+                    printf("Failed to read one line of NODESLIST\n");
+                }
+                // store the rest in nodeline copy
+
+                strcat(nodeline_copy, max_nodeline);
+                memset(max_nodeline, 0, 23*sizeof(char));
+                
+            }else{
+                // full line not found
+                // but the content may be there
+                //store it in nodeline copy
+
+                strcat(nodeline_copy, max_nodeline);
+                memset(max_nodeline, 0, 23*sizeof(char));
+            }            
+        }else{
+
+            // nodeline copy is not empty, perform concatenation until \n
+
+            if((strchr(max_nodeline, '\n')) != NULL){
+
+                //other part of the line found
+                one_line =strcat(nodeline_copy, strtok(max_nodeline, delim));
+                if((sscanf(one_line, "%s %s", temp->node_addr, temp->tcp_port)) == 2){
+
+                    serverlist = insertnode(serverlist, temp);
+                    printf("%s %s\n", temp->node_addr, temp->tcp_port);                    
+                }else{
+                    printf("Failed to read one line of NODESLIST\n");
+                }
+                // reset nodeline copy
+                // store the rest in nodeline copy
+                
+                memset(nodeline_copy, 0, 23*sizeof(char));
+                strcat(nodeline_copy, max_nodeline);
+                memset(max_nodeline, 0, 23*sizeof(char));
+                
+            }else{
+                // full line not found
+                // but the content may be there
+                //store it in nodeline copy
+
+                if((strlen(nodeline_copy) + strlen(max_nodeline)) < 22){
+                
+                    strcat(nodeline_copy, max_nodeline);
+                    memset(max_nodeline, 0, 23*sizeof(char));
+                }
+            } 
+        }
+    }
+
+    if(cnt == -1){
+        printf("Recvfrom failed somewhere. Returning the current list\n");
+        close(fd);
+        return serverlist;
+        
     }
 
     close(fd);
-    return buffer;
+    return serverlist;
 }
 
 // char *send_retrieve(){
@@ -320,7 +403,7 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
     
 // }
 
-int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
+int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     int fail_flag = 0;
 
@@ -343,9 +426,6 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
     memset(snd_cmd, 0, sizeof(snd_cmd));
 
     char *return_msg = NULL;            //return from all the send commands
-
-    nodeinfo_t *new_internal;
-    
 
     nodesLinkedlist_t *aux;
 
@@ -413,18 +493,17 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
             if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network. Answer with SAFE, followed by an ENTRY
 
-                //new intern
-                new_internal = NULL;
-                new_internal = contact_init(new_internal);
-                strcpy(new_internal->tcp_port, tcp_cmd);
-                strcpy(new_internal->node_addr, ip_cmd);
-                new_internal->node_fd = *src_fd;
+                //src_node is the new intern node
+                
+                strcpy(src_node->tcp_port, tcp_cmd);
+                strcpy(src_node->node_addr, ip_cmd);
+                
 
-                slf_node->internals_list = insertnode(slf_node->internals_list, new_internal);
+                slf_node->internals_list = insertnode(slf_node->internals_list, src_node);
                 slf_node->n_internals++;                                
 
                 printf("Sending %s %s %s\n", safe_str, ip_cmd, tcp_cmd);
-                return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
+                return_msg = send_safe(src_node->node_fd, ip_cmd, tcp_cmd);
                 
                 if (return_msg != NULL) {
 
@@ -438,14 +517,16 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 else{
                     printf("Error in parse_tcp.\n");
                     printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
-                    close(*src_fd);
-                    FD_CLR(*src_fd, &(slf_node->crr_scks));
+                    slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                    close(src_node->node_fd);
+                    FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                    
                     return ++fail_flag;                        
                 }
 
                 printf("Sending %s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                 
-                return_msg = send_entry(src_fd, slf_node->personal_addr, slf_node->personal_tcp,
+                return_msg = send_entry(&(src_node->node_fd), slf_node->personal_addr, slf_node->personal_tcp,
                                         ip_cmd, tcp_cmd);
                 
                 if (return_msg != NULL) {
@@ -460,32 +541,30 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 else{
                     printf("Error in parse_tcp.\n");
                     printf("Error connecting to new external: Failed to send ENTRY message. Connection closed\n");
-                    close(*src_fd);
-                    FD_CLR(*src_fd, &(slf_node->crr_scks));
+                    slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                    close(src_node->node_fd);
+                    FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
                     return ++fail_flag;                        
                 }
                 strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
                 strcpy(slf_node->extern_node->node_addr, ip_cmd);
-                slf_node->extern_node->node_fd = *src_fd;                
+                slf_node->extern_node->node_fd = src_node->node_fd;                
                 slf_node->anchorflag = 1; 
 
             }
             else {
                 
-                new_internal = NULL;
-                new_internal = contact_init(new_internal);                
-                strcpy(new_internal->node_addr, tcp_cmd);
-                strcpy(new_internal->node_addr, ip_cmd);
-                new_internal->node_fd = *src_fd;
+                strcpy(src_node->tcp_port, tcp_cmd);
+                strcpy(src_node->node_addr, ip_cmd);                
 
-                slf_node->internals_list = insertnode(slf_node->internals_list, new_internal);
+                slf_node->internals_list = insertnode(slf_node->internals_list, src_node);
                 slf_node->n_internals++;
                 
                 printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-                return_msg = send_safe(*src_fd, ip_cmd, tcp_cmd);
+                return_msg = send_safe(src_node->node_fd, ip_cmd, tcp_cmd);
                 
                 if (strcmp(return_msg, "1") == 0) {
-                    printf("\nMessage sent to %s | %s:\n", ip_cmd, tcp_cmd);
+                    printf("\nMessage sent to [ %s | %s ]:\n", ip_cmd, tcp_cmd);
                     printf("%s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                     if (return_msg != NULL){ //reset the pointer to the received message
                         free(return_msg);
@@ -499,7 +578,9 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                         free(return_msg);
                         return_msg = NULL;
                         printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
-                        close(*src_fd);
+                        slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                        close(src_node->node_fd);
+                        FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
                     }
                     return ++fail_flag;                        
                 }
@@ -515,10 +596,10 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
 
         if(sscanf(msg, "%*s %s %s",ip_cmd, tcp_cmd) == 2){
 
-            if(*src_fd == slf_node->extern_node->node_fd){ // The message reached me through the extern node
+            if(src_node->node_fd == slf_node->extern_node->node_fd){ // The message reached me through the extern node
                 
                 
-                printf("\nMessage received from %s | %s:\n", slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                printf("\nMessage received from [ %s | %s ]:\n", slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 printf("%s\n", msg);                
                  
             }            
@@ -529,8 +610,8 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
                 aux = slf_node->internals_list;
                 while(aux != NULL){
                             
-                    if(aux->node->node_fd == *src_fd){
-                        printf("Internal node converted to external: %s | %s\n", aux->node->node_addr, aux->node->tcp_port);
+                    if(aux->node->node_fd == src_node->node_fd){
+                        printf("Internal node converted to external: [ %s | %s ]\n", aux->node->node_addr, aux->node->tcp_port);
                         break;
                     }
                     aux = aux->next;
@@ -564,7 +645,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd){
     } 
     
     else{
-        printf("Error in parse_tcp: Failed to read command!");
+        printf("Error in parse_tcp: Failed to read command!\n");
         return ++fail_flag;
     }
 
@@ -579,10 +660,10 @@ char *parseNstore(char msg_bffr[], char **node_bffr, int fd){
     
     char *str_ptr;
     const char delim[2] = "\n";
-    char *token;
+    char *token = NULL;
     char *one_cmd = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));   
     memset(one_cmd, 0, MAX_MSG_LENGTH);
-    char cmds_left[2*MAX_MSG_LENGTH]; memset(one_cmd, 0, MAX_MSG_LENGTH);
+    char cmds_left[2*MAX_MSG_LENGTH]; memset(cmds_left, 0, MAX_MSG_LENGTH);
     int msg_found = 0;
 
     str_ptr = *node_bffr;
@@ -619,7 +700,7 @@ char *parseNstore(char msg_bffr[], char **node_bffr, int fd){
             // try to concatenate with the contents from the file descriptor
             // this guy shouldn't have the \n character
 
-            if(token != NULL) snprintf(one_cmd, MAX_MSG_LENGTH,"%s",token);
+            snprintf(one_cmd, MAX_MSG_LENGTH,"%s",*node_bffr);
         }         
     
         if(msg_found == 1){ 
@@ -636,40 +717,42 @@ char *parseNstore(char msg_bffr[], char **node_bffr, int fd){
                        
     str_ptr = msg_bffr;
     //Find msgs in msg_buffer
-    if (((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token = strtok(msg_bffr,delim)) != NULL)) { // \n found
-    
-        strcat(one_cmd, token); // here, token should be the missing half of one_cmd
-        msg_found = 1;
 
-        //strtok modifies *node_bffr, we need to restore it
+    if((strcmp(msg_bffr, "")) != 0){  // if the message buffer has content, read it
+        if (((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token = strtok(msg_bffr,delim)) != NULL)) { // \n found
+        
+            strcat(one_cmd, token); // here, token should be the missing half of one_cmd
+            msg_found = 1;
 
-        while((str_ptr = strchr(str_ptr, '\n')) != NULL){ 
+            //strtok modifies *node_bffr, we need to restore it
+
+            while((str_ptr = strchr(str_ptr, '\n')) != NULL){ 
+                
+                if((token = strtok(NULL, delim)) != NULL){
             
-            if((token = strtok(NULL, delim)) != NULL){
-        
-                //extract the remainder and put it back where it was, along with the line feed characters
-                strcat(cmds_left, token);
-                strcat(cmds_left, "\n");
+                    //extract the remainder and put it back where it was, along with the line feed characters
+                    strcat(cmds_left, token);
+                    strcat(cmds_left, "\n");
+                }
             }
+            if((token = strtok(NULL, delim)) != NULL){ //after strchr returns NULL, there is still the unfinished message to extract
+            
+                //extract the remainder and put it back where it was, along with the line feed characters
+                    strcat(cmds_left, token);
+                    strcat(cmds_left, "\n");
+            }
+                        
+            strcpy(*node_bffr, cmds_left);// keep the remainder            
         }
-        if((token = strtok(NULL, delim)) != NULL){ //after strchr returns NULL, there is still the unfinished message to extract
-        
-            //extract the remainder and put it back where it was, along with the line feed characters
-                strcat(cmds_left, token);
-                strcat(cmds_left, "\n");
-        }
-                    
-        strcpy(*node_bffr, cmds_left);// keep the remainder            
-    }
-    else{
-        if(token != NULL){
-
+        else{
+            
             // no message found
             // store the remainder in the node's buffer and return NULL
-            strcat(one_cmd, token); 
+            strcat(one_cmd, msg_bffr); 
             strcpy(*node_bffr, one_cmd);
             return NULL;
-        } 
+            
+        }
     }
     if(msg_found == 1) return one_cmd;
     return NULL;

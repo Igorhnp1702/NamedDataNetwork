@@ -127,6 +127,9 @@ void reset_contact(nodeinfo_t **contact){
     memset((*contact)->tcp_port, 0, MAX_TCP_UDP_CHARS);
     memset((*contact)->node_buff, 0, MAX_MSG_LENGTH);
     (*contact)->node_fd = -1;
+    (*contact)->entry_flag = 0;
+    (*contact)->safe_flag = 0;
+    (*contact)->msg_object_flag = 0;
     return;
 
 }
@@ -245,7 +248,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 
 		printf("\n%s | %s was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
         aux = head;
-		head = head->next;
+		head = head->next;            
 		free_contact(&(aux->node));		
 		free(aux);		
 		if(head == NULL){
@@ -261,7 +264,7 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 			printf("\nThe name was not found\n\n");
 			return head;
 		}
-		else if(listptr->node->node_fd == old_fd){ //first or last node, and it contains the name
+		else if(listptr->node->node_fd == old_fd){ //first or last node, and it contains the fd
 
 			printf("\n%s | %s was removed from the internals list\n\n", listptr->node->node_addr, listptr->node->tcp_port);
             aux = listptr;

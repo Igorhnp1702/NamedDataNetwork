@@ -321,10 +321,9 @@ int join(struct personal_node *personal, char *net) {
     int success_flag = 0;
     char picked_ip[51];
     char picked_tcp[6];
-    nodesLinkedlist_t *serverlist = NULL;
-    serverlist = Listinit(serverlist);
-    nodeinfo_t *aux = NULL;
-    aux = contact_init(aux);
+    
+    // nodeinfo_t *aux = NULL;
+    // aux = contact_init(aux);
         
     // check the arguments
 
@@ -340,54 +339,31 @@ int join(struct personal_node *personal, char *net) {
     
     // inquire the server about the nodes in the network
             
-    char *nodeslist = server_inquiry(personal->udp_address, personal->udp_port, net);
+    nodesLinkedlist_t *nodeslist = server_inquiry(personal->udp_address, personal->udp_port, net);
 
     if(nodeslist == NULL){
         printf("Error in join: failed to inquire the server\n\n");
         return ++success_flag;
     }
     
-    const char delim[2] = "\n";
-    char *token;
-    int n_nodes = 0;
     
-    // print the response from the node server, line by line, and count the amount of nodes
-    // copy the nodes to a temporary list
-
-    printf("Response from the node server:\n\n");
-
-    token = strtok(nodeslist, delim);
-    printf("%s\n\n", token); // first line (nodeslist net\n)
-    while (token != NULL) {                                         
-        
-        token = strtok(NULL, delim);
-        
-        if(token == NULL) break;
-        if((sscanf(token, "%s %s", aux->node_addr, aux->tcp_port)) != 2){
-            
-            printf("Skipped a line in nodeslist\n");
-        }
-        else{
-            printf("%s\n", token);
-            serverlist = insertnode(serverlist, aux);            
-            n_nodes++;
-        }                
-    }
 
     
 
-    if(n_nodes > 0){ // if the network is not empty, pick the first node
+    if(nodeslist != NULL){ // if the network is not empty, pick the first node
+
         
-        printf("Number of nodes reported in the network: %d\n\n", n_nodes);
+        if((strcmp(nodeslist->node->node_addr, "")) != 0){    
 
-        strcpy(picked_ip, serverlist->node->node_addr);
-        strcpy(picked_tcp, serverlist->node->tcp_port);
-                                             
-        // try to connect
+            strcpy(picked_ip, nodeslist->node->node_addr);
+            strcpy(picked_tcp, nodeslist->node->tcp_port);
+                                                
+            // try to connect
 
-        if(djoin(personal, picked_ip, picked_tcp) == 1) {
-            printf("Error in join: Failed to connect to a node in the desired network\n");
-            return ++success_flag;
+            if(djoin(personal, picked_ip, picked_tcp) == 1) {
+                printf("Error in join: Failed to connect to a node in the desired network\n");
+                return ++success_flag;
+            }
         }
     }
     else{ // empty network, 
@@ -409,10 +385,9 @@ int join(struct personal_node *personal, char *net) {
         node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, net);
         return ++success_flag;
     }
-    personal->join_flag = 1; 
-    free(nodeslist);
-    free_contact(&aux);
-    serverlist = clearlist(serverlist);
+    personal->join_flag = 1;     
+    //free_contact(&aux);
+    nodeslist = clearlist(nodeslist);
      
     return success_flag;
 
@@ -848,9 +823,12 @@ int show_topology(struct personal_node *personal){
     }    
 
     if(personal->network_flag == 1){
-        printf("\n\nYour node:\n\n");        
-        printf("Network: %s\nAdress: %s\nPort: %s\n\n",           
-        personal->personal_net,
+
+        if(personal->join_flag == 1){
+            printf("Your node is inside the following network: %s\n\n", personal->personal_net);
+        }
+        printf("\n\nYour node's info:\n\n");        
+        printf("Adress: %s\nPort: %s\n\n",        
         personal->personal_addr, 
         personal->personal_tcp);
         
@@ -862,7 +840,7 @@ int show_topology(struct personal_node *personal){
     if(personal->extern_node != NULL){
         
         if (strcmp(personal->extern_node->node_addr, "") != 0) {
-            printf("\n\nExternal neighbor: \n");        
+            printf("\n\nExtern neighbor's info: \n");        
             printf("Adress: %s\nPort: %s\n\n",                  
             personal->extern_node->node_addr, 
             personal->extern_node->tcp_port);
@@ -871,11 +849,11 @@ int show_topology(struct personal_node *personal){
         }
     }
     else {
-        printf("\nThere is no external neighbor!\n");
+        printf("\nThere is no extern neighbor!\n");
     }
 
     if (strcmp(personal->backup_addr, "") != 0) {
-        printf("\n\nBackup neighbor: \n");                
+        printf("\n\nBackup neighbor's info: \n");                
         printf("Adress: %s\nPort: %s\n\n",                  
         personal->backup_addr, 
         personal->backup_tcp);

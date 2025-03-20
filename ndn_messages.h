@@ -50,7 +50,7 @@
 
 
 
-char *server_inquiry(char *server_IP, char *server_UDP, char *msg);// request the list of nodes in the network
+nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *msg);// request the list of nodes in the network
 
 char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net);
 
@@ -60,7 +60,7 @@ char* send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
 
 char *send_safe(int fd, char *ext_ip, char *ext_tcp);
 
-int parse_tcp(struct personal_node *slf_node, char *msg, int *src_fd);
+int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node);
 
 char *parseNstore(char msg_bffr[], char **node_bffr, int fd);
 
