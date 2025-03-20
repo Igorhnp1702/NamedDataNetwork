@@ -29,8 +29,9 @@ typedef enum {
 
 // Structure of an entry in the interest table
 typedef struct {
-    char name[MAX_NAME_LENGTH];          // Object name
+    char name[MAX_NAME_LENGTH];                // Object name
     InterfaceState interfaces[MAX_INTERFACES]; // Interfaces' states
+    int active;                                // 1 = Active, 0 = Inactive
 } InterestEntry;
 
 // Structure of the interest table
@@ -40,6 +41,16 @@ typedef struct {
 
 
 
+
+void init_interest_table(InterestTable *table);
+int add_interest(InterestTable *table, char *name, InterfaceState initial_state);
+int remove_interest(InterestTable *table, char *name);
+void update_interface_state(InterestTable *table, char *name, int interface_index, InterfaceState state);
+void clear_interest_table(InterestTable *table);
+int search_interest(InterestTable *table, char *name);
+int search_waiting_interface(InterestTable *table, char *name);
+InterfaceState search_interest_interface_state(InterestTable *table, char *name, int interface_index);
+void show_interest_table(const InterestTable *table);
 
 
 
