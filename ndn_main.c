@@ -500,8 +500,9 @@ int main(int argc, char **argv){
 
                             //the message came from the extern node
                            
-                            while((message = parseNstore(buffer, &(my_node->extern_node->node_buff), fd_itr)) != NULL){
+                            while((message = parseNstore(buffer, &(my_node->extern_node->node_buff))) != NULL){
 
+                                memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
                                 if(parse_tcp(my_node, message, my_node->extern_node) == 1){
                                     printf("Error in main: failed to parse a message\n");
                                 }
@@ -512,8 +513,9 @@ int main(int argc, char **argv){
                             // the message came from a new intern node that did not send
                             // ENTRY message yet
 
-                            while((message = parseNstore(buffer, &(node_aux->node_buff), fd_itr)) != NULL){
+                            while((message = parseNstore(buffer, &(node_aux->node_buff))) != NULL){
 
+                                memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
                                 if(parse_tcp(my_node, message, node_aux) == 1){
                                     printf("Error in main: failed to parse a message\n");
                                 }
@@ -530,8 +532,9 @@ int main(int argc, char **argv){
                                 if(aux->node->node_fd == fd_itr){
                                     
                                     // the message came from an intern node
-                                    while((message = parseNstore(buffer, &(aux->node->node_buff), fd_itr)) != NULL){
+                                    while((message = parseNstore(buffer, &(aux->node->node_buff))) != NULL){
 
+                                        memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
                                         if(parse_tcp(my_node, message, aux->node) == 1){
                                             printf("Error in main: failed to parse a message\n");
                                         }

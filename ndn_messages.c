@@ -656,51 +656,56 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
     return fail_flag;
 }
 
-char *parseNstore(char msg_bffr[], char **node_bffr, int fd){
+char *parseNstore(char msg_bffr[], char **node_bffr){
     
-    char *str_ptr;
+    char *str_ptr = NULL;
     const char delim[2] = "\n";
     char *token = NULL;
     char *one_cmd = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));   
     memset(one_cmd, 0, MAX_MSG_LENGTH);
-    char cmds_left[2*MAX_MSG_LENGTH]; memset(cmds_left, 0, MAX_MSG_LENGTH);
+    char cmds_left[MAX_MSG_LENGTH]; memset(cmds_left, 0, MAX_MSG_LENGTH);
     int msg_found = 0;
 
-    str_ptr = *node_bffr;
 
     if((strcmp(*node_bffr, "")) != 0){  // if the node's buffer has content, read it
                 
-        if(((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token=strtok(*node_bffr,delim)) != NULL)){  // if there's a full message, store it
+        if(((str_ptr = strchr(*node_bffr, '\n')) != NULL) && ((token=strtok(*node_bffr,delim)) != NULL)){  // if there's a final part of a message, store it
             
             msg_found = 1;
             snprintf(one_cmd, MAX_MSG_LENGTH,"%s",token);
             
-            //strtok modifies *node_bffr, we need to restore it
+            //strtok only replaces the next occurence (from left to right) of the \n
 
-            while((str_ptr = strchr(str_ptr, '\n')) != NULL){ 
+            while((str_ptr = strchr(str_ptr + 1, '\n')) != NULL){
+                
+                // You still have full messages to extract
                 
                 if((token = strtok(NULL, delim)) != NULL){
             
-                //extract the remainder and put it back where it was, along with the line feed characters
+                    //extract the remainder and put it back where it was, along with the line feed characters
                     strcat(cmds_left, token);
                     strcat(cmds_left, "\n");
                 }
             }
-            if((token = strtok(NULL, delim)) != NULL){ //after strchr returns NULL, there is still the unfinished message to extract
-            
+            if((token = strtok(NULL, delim)) != NULL){ 
+                
+                //if there is still something to extract after strchr returns NULL, 
                 //extract the remainder and put it back where it was, along with the line feed characters
-                    strcat(cmds_left, token);
-                    strcat(cmds_left, "\n");
+
+                strcat(cmds_left, token);                
+             
             }
-                        
             strcpy(*node_bffr, cmds_left);// keep the remainder
+                        
+            
         }
         else{
-            // if not, put the half message in one_cmd and
+            // if not, put the beginning of the message in one_cmd and
             // try to concatenate with the contents from the file descriptor
             // this guy shouldn't have the \n character
 
-            snprintf(one_cmd, MAX_MSG_LENGTH,"%s",*node_bffr);
+            snprintf(one_cmd, strlen(*node_bffr),"%s",*node_bffr);
+            memset(*node_bffr, 0, MAX_MSG_LENGTH);
         }         
     
         if(msg_found == 1){ 
@@ -715,18 +720,18 @@ char *parseNstore(char msg_bffr[], char **node_bffr, int fd){
         //concatenate the contents in the file descriptor with the contents in the buffer
     }
                        
-    str_ptr = msg_bffr;
+    
     //Find msgs in msg_buffer
 
     if((strcmp(msg_bffr, "")) != 0){  // if the message buffer has content, read it
-        if (((str_ptr = strchr(str_ptr, '\n')) != NULL) && ((token = strtok(msg_bffr,delim)) != NULL)) { // \n found
+        if (((str_ptr = strchr(msg_bffr, '\n')) != NULL) && ((token = strtok(msg_bffr,delim)) != NULL)) { // \n found
         
             strcat(one_cmd, token); // here, token should be the missing half of one_cmd
             msg_found = 1;
 
             //strtok modifies *node_bffr, we need to restore it
 
-            while((str_ptr = strchr(str_ptr, '\n')) != NULL){ 
+            while((str_ptr = strchr(str_ptr + 1, '\n')) != NULL){ 
                 
                 if((token = strtok(NULL, delim)) != NULL){
             
@@ -738,8 +743,8 @@ char *parseNstore(char msg_bffr[], char **node_bffr, int fd){
             if((token = strtok(NULL, delim)) != NULL){ //after strchr returns NULL, there is still the unfinished message to extract
             
                 //extract the remainder and put it back where it was, along with the line feed characters
-                    strcat(cmds_left, token);
-                    strcat(cmds_left, "\n");
+                strcat(cmds_left, token);
+                    
             }
                         
             strcpy(*node_bffr, cmds_left);// keep the remainder            
