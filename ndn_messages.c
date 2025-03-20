@@ -768,7 +768,12 @@ char *parseNstore(char msg_bffr[], char **node_bffr){
     char *str_ptr = NULL;
     const char delim[2] = "\n";
     char *token = NULL;
-    char *one_cmd = (char*)calloc(MAX_MSG_LENGTH, sizeof(char));   
+    char *one_cmd; 
+    if((one_cmd = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
+        
+        printf("Failed to allocate memory in parseNstore. Process terminated\n");
+        exit(1);
+    }   
     memset(one_cmd, 0, MAX_MSG_LENGTH);
     char cmds_left[MAX_MSG_LENGTH]; memset(cmds_left, 0, MAX_MSG_LENGTH);
     int msg_found = 0;

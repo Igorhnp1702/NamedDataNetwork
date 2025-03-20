@@ -504,7 +504,9 @@ int main(int argc, char **argv){
                                 memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
                                 if(parse_tcp(my_node, message, my_node->extern_node) == 1){
                                     printf("Error in main: failed to parse a message\n");
+                                                                        
                                 }
+                                if(message != NULL)free(message);
                             }
 
                         }else if(fd_itr == node_aux->node_fd){
@@ -517,7 +519,9 @@ int main(int argc, char **argv){
                                 memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
                                 if(parse_tcp(my_node, message, node_aux) == 1){
                                     printf("Error in main: failed to parse a message\n");
+                                    
                                 }
+                                if(message != NULL)free(message);
                             }
 
                         }else{
@@ -536,7 +540,9 @@ int main(int argc, char **argv){
                                         memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
                                         if(parse_tcp(my_node, message, aux->node) == 1){
                                             printf("Error in main: failed to parse a message\n");
+                                            
                                         }
+                                        if(message != NULL)free(message);
                                     }
                                     break;
                                 } 
