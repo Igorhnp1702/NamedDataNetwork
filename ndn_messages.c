@@ -398,35 +398,62 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
 
 
 
-char *send_interest(int fd, char *object_name) {
+char *send_interest(int fd, char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
 
     // Allocate Buffer's Memory
     if ((buffer = (char *)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL) {
-        printf("Error in send_object: Failed to allocate memory. Process terminated.\n");
+        printf("Error in send_interest: Failed to allocate memory. Process terminated.\n");
         exit(1);
     }
 
     ssize_t nbytes, nleft, nwritten;
-    
     sprintf(buffer, "%s %s\n", interest_msg_str, object_name);
-    ptr = buffer;
     nbytes = strlen(buffer);
-    nleft = nbytes;
 
-    // Send the message
-    while (nleft > 0) {
-        nwritten = write(fd, ptr, nleft);
-        if (nwritten <= 0) {
-            printf("Send Object: Error in write\n");
-            free(buffer);
-            return NULL;
+    
+
+    nodesLinkedlist_t *current = slf_node->internals_list;
+    while (current != NULL) {
+        int internal_fd = current->node->node_fd;
+
+        // Ignore the node that sent the interest
+        if (internal_fd != fd) {
+            ptr = buffer;
+            nleft = nbytes;
+
+            // Send the message
+            while (nleft > 0) {
+                nwritten = write(fd, ptr, nleft);
+                if (nwritten <= 0) {
+                    printf("Error in send_interest: Failed to write to socket for node [%s | %s].\n",
+                           current->node->node_addr, current->node->tcp_port);
+                    break;
+                }
+                nleft -= nwritten;
+                ptr += nwritten;
+            }
+
+            if (nleft == 0) {
+                printf("Interest sent to internal node [%s | %s]: %s\n",
+                       current->node->node_addr, current->node->tcp_port, object_name);
+                
+                // If interest is not in the table
+                if (!search_interest(slf_node->interest_table, object_name)) {
+                    // Add interest
+                    add_interest(slf_node->interest_table, object_name, WAITING);
+                }
+                // Set interface to WAITING
+                update_interface_state(slf_node->interest_table, object_name, internal_fd, WAITING);
+
+            }
         }
-        nleft -= nwritten;
-        ptr += nwritten;
+
+        current = current->next;
     }
+
 
     memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
     strcpy(buffer, "1"); //indicates that the message was sent
@@ -434,7 +461,7 @@ char *send_interest(int fd, char *object_name) {
     return buffer; // returning what was inside the file descriptor
 }
 
-char *send_object(int fd, char *object_name) {
+char *send_object(int fd, char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
@@ -464,20 +491,21 @@ char *send_object(int fd, char *object_name) {
         ptr += nwritten;
     }
 
+    update_interface_state(slf_node->interest_table, object_name, fd, ANSWER);
     memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
     strcpy(buffer, "1"); //indicates that the message was sent
 
     return buffer; // returning what was inside the file descriptor
 }
 
-char *send_noobject(int fd, char *object_name) {
+char *send_noobject(int fd, char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
 
     // Allocate Buffer's Memory
     if ((buffer = (char *)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL) {
-        printf("Error in send_object: Failed to allocate memory. Process terminated.\n");
+        printf("Error in send_noobject: Failed to allocate memory. Process terminated.\n");
         exit(1);
     }
 
@@ -500,6 +528,40 @@ char *send_noobject(int fd, char *object_name) {
         ptr += nwritten;
     }
 
+    // Close the interface that is sending the NOOBJECT message
+    update_interface_state(slf_node->interest_table, object_name, fd, CLOSED);
+    
+    // Close all interfaces that are waiting for the object
+    for (int i = 0; i < MAX_ENTRIES; i++) {
+        if (slf_node->interest_table->entries[i].active &&
+            strcmp(slf_node->interest_table->entries[i].name, object_name) == 0) {
+            for (int j = 0; j < MAX_INTERFACES; j++) {
+
+                // Check if the interface is waiting for the object
+                if (slf_node->interest_table->entries[i].interfaces[j] == WAITING) {
+
+                    // Send NOOBJECT to the interface
+                    ptr = buffer;
+                    nleft = nbytes;
+
+                    while (nleft > 0) {
+                        nwritten = write(j, ptr, nleft);
+                        if (nwritten <= 0) {
+                            printf("Error in send_noobject: Failed to forward NOOBJECT to interface [%d].\n", j);
+                            break;
+                        }
+                        nleft -= nwritten;
+                        ptr += nwritten;
+                    }
+                    // Set the interface to CLOSED
+                    update_interface_state(slf_node->interest_table, object_name, j, CLOSED);
+                }
+            }
+            break; // Found the entry, no need to continue
+        }
+    }
+    
+    
     memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
     strcpy(buffer, "1"); //indicates that the message was sent
 
@@ -552,7 +614,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             // search the object in the cache
             if (queueSearch(slf_node->queue_ptr, object_buff)) {
                 // object in cache, send object message
-                return_msg = send_object(src_node->node_fd, object_buff);
+                return_msg = send_object(src_node->node_fd, object_buff, slf_node);
                 if (return_msg != NULL) {
                     free(return_msg);
                     return_msg = NULL;
@@ -566,7 +628,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                         // ...and not in interest table
                         add_interest(slf_node->interest_table, object_buff, WAITING);
                         // send interest message to neighbors
-                        forward_interest(slf_node, object_buff, src_node->node_fd);
+                        send_interest(src_node->node_fd, object_buff, slf_node);
                     }
                     else {
                         // Interest already in the table
@@ -580,7 +642,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 
                 } else {
                     // ...and you have no other neighbors, send noobject message to the source
-                    return_msg = send_noobject(src_node->node_fd, object_buff);
+                    return_msg = send_noobject(src_node->node_fd, object_buff, slf_node);
                     if (return_msg != NULL) {
                         free(return_msg);
                         return_msg = NULL;
@@ -605,7 +667,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             if (waiting_interface != -1) {
                 // if someone is waiting for the object
                 // send object message to that node
-                forward_object(slf_node, object_buff, src_node->node_fd);
+                send_object(waiting_interface, object_buff, slf_node);
 
                 // and place the object in cache
                 insertNew(slf_node->queue_ptr, object_buff);
@@ -631,25 +693,18 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         if(sscanf(msg, "%*s %s",object_buff) == 1){
             
             printf("Received NOOBJECT: %s\n", object_buff);
-            // check interest table to see if someone is waiting for an answer from me           
-            int waiting_interface = search_waiting_interface(slf_node->interest_table, object_buff);
-            if (waiting_interface != -1) {
-                // if someone is waiting for the object
-                // send noobject message to that node
-                update_interface_state(slf_node->interest_table, object_buff, src_node->node_fd, CLOSED);
 
-                // check if all interfaces are closed
-                if (all_interfaces_closed(slf_node->interest_table, object_buff)) {
-                    // send noobject message to answer interface
-                    forward_noobject(slf_node, object_buff, src_node->node_fd);
-                    // remove interest from table
-                    remove_interest(slf_node->interest_table, object_buff);
-                }
-            }
-            else {
-                printf("No interfaces waiting for NOOBJECT: %s\n", object_buff);
+            // Send NOOBJECT to all interfaces that are waiting for the object
+            send_noobject(src_node->node_fd, object_buff, slf_node);
+
+            // check if all interfaces are closed
+            if (all_interfaces_closed(slf_node->interest_table, object_buff)) {
+                // remove interest from table
+                remove_interest(slf_node->interest_table, object_buff);
             }
         }
+    
+
         else {
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
             return ++fail_flag;

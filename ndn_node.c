@@ -313,3 +313,7 @@ nodesLinkedlist_t *clearlist(nodesLinkedlist_t* head){
     head = NULL;
     return head;
 }
+
+int has_neighbors(nodesLinkedlist_t *internals_list) {
+    return (internals_list != NULL);
+}
