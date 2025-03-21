@@ -293,6 +293,10 @@ void select_cmd(struct personal_node *personal, char *input){
         // }
         
         free_contact(&(personal->extern_node));
+        personal->queue_ptr = clearQueue(personal->queue_ptr);
+        free(personal->personal_net);
+        free(personal->backup_addr);
+        free(personal->backup_tcp);        
         free(personal);
         printf("Exit executed successfully\n");
         exit(0);
@@ -345,11 +349,7 @@ int join(struct personal_node *personal, char *net) {
     if(nodeslist == NULL){
         printf("Error in join: failed to inquire the server\n\n");
         return ++success_flag;
-    }
-    
-    
-
-    
+    }            
 
     if(nodeslist != NULL){ // if the network is not empty, pick the first node
 
@@ -477,7 +477,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         // free and close everything
         return 1;
     }
-
+    
 
     if (strcmp(connectIP, "0.0.0.0") == 0) {  //First node of the network
         personal->anchorflag = 1;             //!confirmar        
@@ -486,6 +486,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
     }
     else{
                 
+        
         //Sends ENTRY message
         return_msg = send_entry(&(personal->extern_node->node_fd), personal->personal_addr, personal->personal_tcp, 
         connectIP, connectTCP); 
@@ -890,20 +891,7 @@ int show_topology(struct personal_node *personal){
 
 
 int leave(struct personal_node *personal) {
-    
-    // if(personal->network_flag == 0){        
-    //     //personal = reset_personal(personal);
-    //     int i = 0;
-    //     for (i = 3; i <= personal->max_fd; i++) {
-    //         if (FD_ISSET(i, &personal->crr_scks)) {
-    //             FD_CLR(i, &personal->crr_scks);
-    //             close(i);
-    //         }
-    //     }        
-    //     personal = reset_personal(personal); 
-    //     return 1;
-    // }    
-    
+            
     if(personal->join_flag == 1){
         if ((node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp,
              personal->personal_net)) == NULL){

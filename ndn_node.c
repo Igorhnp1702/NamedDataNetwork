@@ -29,7 +29,7 @@
 // project libraries
 #include "ndn_node.h"
 #include "ndn_messages.h"
-//#include "ndn_queue.h"
+
 
 
 
@@ -91,22 +91,26 @@ struct personal_node *personal_init(struct personal_node *personal){
     personal->network_flag = 0;
     personal->join_flag = 0;
     personal->n_internals = 0;    // counter for the number of internal neighbors    
-    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor        
+    personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
+    personal->cache_limit = 0;
+
     personal->personal_addr = NULL;
     personal->personal_tcp = NULL;  
     personal->udp_port = NULL;   //UDP server port
     personal->udp_address = NULL;    //UDP server address
     personal->extern_node = NULL;   //extern neighbor node
-    
-   
-    /* set the start of the list to NULL */
 
-    //personal->queue_ptr = NULL; 
+    //Initialize the object storage
+    
+    personal->storage_ptr = NULL;
+   
+    //set the start of the list to NULL
+
+    personal->queue_ptr = NULL;     
             
     //init neighbors list
-
     personal->internals_list = NULL;
-    Listinit(personal->internals_list);
+    personal->internals_list = Listinit(personal->internals_list);    
     
     return personal;
 }//personal_init()
@@ -138,12 +142,13 @@ void reset_contact(nodeinfo_t **contact){
 struct personal_node *reset_personal(struct personal_node *personal){
            
     personal->internals_list = clearlist(personal->internals_list);
+    personal->queue_ptr = clearQueue(personal->queue_ptr);
+    personal->queue_ptr = queueInit(personal->queue_ptr, personal->cache_limit);
+    personal->storage_ptr = storageClear(personal->storage_ptr);
     
     /*clear extern and backup nodes*/
-    if (personal->extern_node != NULL){
-        close(personal->extern_node->node_fd);
-        reset_contact(&(personal->extern_node));
-        
+    if (personal->extern_node != NULL){        
+        reset_contact(&(personal->extern_node));               
     }
             
     memset(personal->backup_addr, 0, MAX_ADDRESS_SIZE);

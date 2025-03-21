@@ -9,8 +9,8 @@
  * Description: header file for the object queue
  ***************************************************************************/
 
- #ifndef ndn_queue_header
- #define ndn_queue_header
+ #ifndef ndn_objectStructs_header
+ #define ndn_objectStructs_header
 
 /**************************************************************************
  * typedef struct queueBlock_t
@@ -47,22 +47,41 @@ typedef struct queueBlock_t{
  * 
  **************************************************************************/
 typedef struct objectQueue_t{
-    int queue_size;            
+    int queue_limit;
+    int object_counter;            
     queueBlock_t *head; 
     queueBlock_t *tail; 
 }objectQueue_t;
+
+typedef struct storageList_t{
+    char *object;
+    struct storageList_t *next;
+}storageList_t;
   
 // Insert function signature for queue management (init, delete, insert, search, clear)
 
-objectQueue_t *queueInit(objectQueue_t *queue_ptr, int size);
+objectQueue_t *queueInit(objectQueue_t *queue_ptr, int limit);
 
 objectQueue_t *insertNew(objectQueue_t *queue_ptr, char *string);
 
-objectQueue_t *deleteOld(objectQueue_t *queue_ptr, char *string);
+objectQueue_t *deleteOld(objectQueue_t *queue_ptr);
+
+objectQueue_t *deleteObject(objectQueue_t *queue_ptr, char *string);
 
 int queueSearch(objectQueue_t *queue_ptr, char *string);
 
-void clearQueue(objectQueue_t *queue_ptr);
+objectQueue_t *clearQueue(objectQueue_t *queue_ptr);
+
+storageList_t *storageInit(storageList_t *head);
+
+storageList_t *storageInsert(storageList_t *head, char *object);
+
+storageList_t *storageDelete(storageList_t *head, char *object);
+
+int storageSearch(storageList_t *head, char *object);
+
+storageList_t *storageClear(storageList_t *head);
+
 
 
  #endif

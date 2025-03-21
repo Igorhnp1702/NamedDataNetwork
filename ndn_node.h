@@ -14,6 +14,7 @@
 
 
 #include "ndn_interestTable.h"
+#include "ndn_objectStructs.h"
 
 /**************************************************************************
  * nodeinfo_t
@@ -80,7 +81,7 @@ int network_flag;
 int join_flag;
 int n_internals;                    // counter for the number of internal neighbors
 int max_fd;                         // the maximum integer assigned to a file descriptor in this node's FD set
-int client_fd;                      // file descriptor to communicate with the extern node
+int cache_limit;
 int server_fd;                      // to accept connections with other nodes
 char *personal_addr;
 char *personal_tcp;
@@ -91,7 +92,8 @@ char *udp_port;                     // UDP port of the server of nodes
 char *udp_address;                  // UDP address of the server of nodes
 fd_set rdy_scks;                    // set of file descriptors with activity to handle (rdy = ready)
 fd_set crr_scks;                    // set of file descriptors in use (crr = current)
-// objectQueue_t *queue_ptr;           // double linked list of the contents of the node
+storageList_t * storage_ptr;
+objectQueue_t *queue_ptr;           // double linked list of the contents of the node
 InterestTable *interest_table;      // table of interests
 nodeinfo_t *extern_node;            // contact of the extern neighbor node
 nodesLinkedlist_t *internals_list; // list of contacts of internal neighbors

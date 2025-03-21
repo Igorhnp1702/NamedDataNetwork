@@ -32,8 +32,8 @@
 #include "ndn_node.h"
 #include "ndn_commands.h"
 #include "ndn_messages.h"
-// #include "ndn_interestTable.h"
-// #include "ndn_queue.h"
+#include "ndn_interestTable.h"
+#include "ndn_objectStructs.h"
 
 
 
@@ -61,7 +61,8 @@ int main(int argc, char **argv){
     char *personal_addr;        // Personal IPv4 addres
     char *personal_port;        // Personal TCP port
     char *server_addr;          // The server's IPv4 address
-    char *server_port;          // The server's UDP port        
+    char *server_port;          // The server's UDP port      
+    int cache_threshold;  
             
     if (argc == 4)
     {
@@ -174,7 +175,8 @@ int main(int argc, char **argv){
     my_node->personal_tcp = personal_port;
     my_node->udp_address = server_addr;
     my_node->udp_port = server_port;
-
+    my_node->cache_limit = cache_threshold;
+    my_node->queue_ptr = queueInit(my_node->queue_ptr, my_node->cache_limit);
     my_node->extern_node = contact_init(my_node->extern_node);
 
     socklen_t srv_addrlen;        // size of the personal IPv4 address
