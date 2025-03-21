@@ -79,6 +79,15 @@ int check_name(char *name){
     else return flag;
 }//check_name
 
+int check_cache_size(char *size_str){
+
+    if((atoi(size_str)) <= 0){
+        printf("Cache size has to be a positive number");
+        return 1;
+    }
+    return 0;
+}
+
 /*------------------------------------------User inteface funcions------------------------------------------*/
 
 void select_cmd(struct personal_node *personal, char *input){ 

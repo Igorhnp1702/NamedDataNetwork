@@ -66,7 +66,12 @@ int main(int argc, char **argv){
             
     if (argc == 4)
     {
-        
+        if(check_cache_size(argv[1]) == 1){
+
+            printf("Cache size has to be a positive number");
+            exit(1);
+        }
+        cache_threshold = atoi(argv[1]);
         if(!is_valid_ip(argv[2])){
 
             printf("Invalid personal IPv4 address. Process terminated\n");
@@ -91,6 +96,13 @@ int main(int argc, char **argv){
 
     if (argc == 5)
     {
+        if(check_cache_size(argv[1]) == 1){
+
+            printf("Cache size has to be a positive number");
+            exit(1);
+        }
+        cache_threshold = atoi(argv[1]);
+        
         if(!is_valid_ip(argv[2])){
 
             printf("Invalid personal IPv4 address. Process terminated\n");
@@ -128,6 +140,13 @@ int main(int argc, char **argv){
     if (argc == 6)
     {
     
+        if(check_cache_size(argv[1]) == 1){
+
+            printf("Cache size has to be a positive number");
+            exit(1);
+        }
+        cache_threshold = atoi(argv[1]);
+        
         if(!is_valid_ip(argv[2])){
 
             printf("Invalid personal IPv4 address. Process terminated\n");

@@ -52,7 +52,7 @@ objectQueue_t *insertNew(objectQueue_t *queue_ptr, char *string){
 
     // compare counter with limit before calling this function
     char *copy_string = NULL;
-    queueBlock_t *new_block = NULL, *aux;
+    queueBlock_t *new_block = NULL;
 
     if((new_block = (queueBlock_t*)calloc(1, sizeof(queueBlock_t))) == NULL){
         
@@ -289,12 +289,12 @@ int storageSearch(storageList_t *head, char *object){
     while(aux != NULL){
 
         if((strcmp(aux->object, object)) == 0){
-            printf("%s was found in the object storage\n");
+            printf("%s was found in the object storage\n", object);
             return 1;
         }
         aux = aux->next;
     }
-    printf("Failed to find %s in the object storage\n");
+    printf("Failed to find %s in the object storage\n", object);
     return 0;
 
 }

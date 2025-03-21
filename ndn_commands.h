@@ -298,6 +298,8 @@ int check_ports(char *port_str);
                         
 int is_valid_ip(const char *ip);
 
+int check_cache_size(char *size_str);
+
 
 #endif
 
