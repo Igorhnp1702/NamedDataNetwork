@@ -128,7 +128,7 @@ int join(struct personal_node *personal, char *net);
 //  *
 //  * Return: A pointer to the updated list of contents;
 //  **************************************************************/
-// objectQueue_t *create(objectQueue_t *queue_ptr, char *name);
+objectQueue_t *create(objectQueue_t *queue_ptr, char *name);
 
 // /***************************************************************
 //  * delete()
@@ -144,7 +144,7 @@ int join(struct personal_node *personal, char *net);
 //  *
 //  *  Return: A pointer to the updated list of contents;
 //  **************************************************************/
-//  objectQueue_t *delete(objectQueue_t *queue_ptr, char *name); 
+objectQueue_t *delete(objectQueue_t *queue_ptr, char *name); 
 
 // /***************************************************************
 //  * retrieve()
@@ -161,7 +161,7 @@ int join(struct personal_node *personal, char *net);
 //  *
 //  *  Return: 0 on success; 1 on failure;
 //  **************************************************************/
-// int retrieve(struct personal_node *personal, char *name);
+int retrieve(struct personal_node *personal, char *name);
 
 /***************************************************************
  * show_topology()
@@ -191,7 +191,7 @@ int show_topology(struct personal_node *personal);
 //  *
 //  *  Return: 0 on success; 1 on failure;
 //  **************************************************************/
-// int show_names(objectQueue_t **queue_ptr);
+int show_names(objectQueue_t **queue_ptr);
 
 // /***************************************************************
 //  * show_interest_table()
