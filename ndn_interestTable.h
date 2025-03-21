@@ -16,7 +16,7 @@
  #include <string.h>
 
  #define MAX_ENTRIES 10
- #define MAX_NAME_LENGTH 100
+ #define MAX_NAME_LENGTH 101
  #define MAX_INTERFACES 10
 
 

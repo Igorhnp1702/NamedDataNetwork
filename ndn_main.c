@@ -244,22 +244,11 @@ int main(int argc, char **argv){
             printf("Error in select: %s.\nProcess terminated\n", strerror(errno));
             leave(my_node);                    
             
-
-            // if(my_node->queue_ptr != NULL){
-            
-            //     objectQueue_t *queue_ptr; // pointer to go through the list
-            //     objectQueue_t *aux;     // auxiliary pointer to delete elements in the lists
-            //     queue_ptr = my_node->contents;
-                
-            //     while(queue_ptr != NULL){
-
-            //         aux = queue_ptr;
-            //         queue_ptr = queue_ptr->next;
-            //         free(aux->string);
-            //         free(aux);
-                    
-            //     }                            
-            // }
+            free_contact(&(my_node->extern_node));
+            my_node->queue_ptr = clearQueue(my_node->queue_ptr);
+            free(my_node->personal_net);
+            free(my_node->backup_addr);
+            free(my_node->backup_tcp);
                 
             free(my_node);
             exit(1);                

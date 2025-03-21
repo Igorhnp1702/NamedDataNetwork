@@ -73,7 +73,7 @@ int check_name(char *name){
     int flag = 0; //success flag
 
     if(strlen(name) > 100){
-        printf("Content size is too big. Content ignored\n");
+        printf("Object size is too big. Object ignored\n");
         return ++flag;
     }
     else return flag;
@@ -96,11 +96,11 @@ void select_cmd(struct personal_node *personal, char *input){
     char tcp[MAX_TCP_UDP_CHARS];      memset(tcp, 0, sizeof(tcp));             // a tcp port passed in the commands
     char udp[MAX_TCP_UDP_CHARS];      memset(udp, 0, sizeof(udp));             // the udp port of the node server passed in the commands    
 
-    char cmd_str1[MAX_MSG_CMD_SIZE];  memset(cmd_str1, 0, sizeof(cmd_str1));   // should be enough for the first string of the command
-    char cmd_str2[MAX_MSG_CMD_SIZE];  memset(cmd_str2, 0, sizeof(cmd_str2));   // should be enough for the first string of the command
-    char cmd_str3[MAX_MSG_CMD_SIZE];  memset(cmd_str3, 0, sizeof(cmd_str3));   // should be enough for the first string of the command
-    char address[MAX_ADDRESS_SIZE];   memset(address, 0, sizeof(address));     // an IPv4 address passed in the commands
-    char content[MAX_OBJECT_NAME];    memset(content, 0, sizeof(content));     // the name of a content passed in the commands
+    char cmd_str1[MAX_MSG_CMD_SIZE];    memset(cmd_str1, 0, sizeof(cmd_str1));   // should be enough for the first string of the command
+    char cmd_str2[MAX_MSG_CMD_SIZE];    memset(cmd_str2, 0, sizeof(cmd_str2));   // should be enough for the first string of the command
+    char cmd_str3[MAX_MSG_CMD_SIZE];    memset(cmd_str3, 0, sizeof(cmd_str3));   // should be enough for the first string of the command
+    char address[MAX_ADDRESS_SIZE];     memset(address, 0, sizeof(address));     // an IPv4 address passed in the commands
+    char object_string[MAX_NAME_LENGTH];    memset(object_string, 0, sizeof(object_string));     // the name of a content passed in the commands
 
     // parse the first string
 
@@ -164,10 +164,10 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, create_str) == 0 || strcmp(cmd_str1, create_str_short) == 0){
 
-        if(sscanf(input, "%*s %s", content) == 1){
+        if(sscanf(input, "%*s %s", object_string) == 1){
             
             printf("Executing %s...\n\n", create_str);
-            personal->queue_ptr = create(personal->queue_ptr, content); // create and store a content inside the personal node           
+            personal->storage_ptr = create(personal->storage_ptr, object_string); // create and store a content inside the personal node           
             return; 
         }
         else{
@@ -178,10 +178,10 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, delete_str) == 0 || strcmp(cmd_str1, delete_str_short) == 0){
 
-        if(sscanf(input, "%*s %s", content) == 1){
+        if(sscanf(input, "%*s %s", object_string) == 1){
             
             printf("Executing %s...\n\n", delete_str);
-            personal->queue_ptr = delete(personal->queue_ptr, content); // delete a content inside the personal node
+            personal->storage_ptr = storageDelete(personal->storage_ptr, object_string); // delete a content inside the personal node
             return;            
         }
         else{
@@ -192,7 +192,7 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){
         
-        if(sscanf(input, "%*s %s", content) == 1){
+        if(sscanf(input, "%*s %s", object_string) == 1){
             
             printf("Executing %s...\n\n", retrieve_str);
             // retrieve(personal, content); // search and copy a content from another node    
@@ -200,15 +200,15 @@ void select_cmd(struct personal_node *personal, char *input){
             // SE NAO TIVER SEND INTERST 
             // SE TIVER RETORNAR O OBJETO
             
-            if (queueSearch(personal->queue_ptr, content)) {
-                send_object(personal->extern_node->node_fd, content, personal);
+            if (queueSearch(personal->queue_ptr, object_string)) {
+                send_object(personal->extern_node->node_fd, object_string, personal);
                              
             } 
-            else if (storageSearch(personal->storage_ptr, content)) {
-                send_object(personal->extern_node->node_fd, content, personal);
+            else if (storageSearch(personal->storage_ptr, object_string)) {
+                send_object(personal->extern_node->node_fd, object_string, personal);
             }
             else {
-                send_interest(personal->extern_node->node_fd, content, personal);
+                send_interest(personal->extern_node->node_fd, object_string, personal);
             }
             
             return; 
@@ -263,23 +263,26 @@ void select_cmd(struct personal_node *personal, char *input){
     else if(strcmp(cmd_str1, clear_names_str_short) == 0){
 
         printf("Executing %s...\n\n", cmd_str1);
-        personal->contents = clear_names(personal->contents);  // clear the contents table of the personal node            
+        personal->storage_ptr = storageClear(personal->storage_ptr);  // clear the contents table of the personal node            
         return;
 
     }// else if cn
 
     else if(strcmp(cmd_str1, show_interest_table_str_short) == 0){
 
-        if(strcmp(personal->persn_info->network, "") == 0)
-        
-        printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-        show_interest_table(personal); // show the interest table
-        
+        if(personal->network_flag == 0){
+            printf("You are not inside a network. No interests to show\n");
+
+        }
+        else{
+            printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
+            show_interest_table(personal); // show the interest table
+        }                        
         return;
 
-    }
+    }//else if si
     
-        //else if si
+        
     
     else if(strcmp(cmd_str1, leave_str) == 0 || strcmp(cmd_str1, leave_str_short) == 0){
 
@@ -527,104 +530,17 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
     
 
 
-objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100, alphanumeric chars only
+storageList_t *create(storageList_t *storage_head, char *name){ // name size <= 100, alphanumeric chars only
 
     if(check_name(name) == 1){
         printf("Error in create: invalid name\n");
-        return contents;
-    }
-    
-    int name_size = strlen(name) + 1; 
-    queueBlock_t *new_node = (queueBlock_t*)calloc(1, sizeof(queueBlock_t));
-    new_node->name = (char*)calloc(name_size, sizeof(char));
-    strcpy(new_node->name, name);
-
-    if(queue_ptr == NULL){ // if true, we are creating the first element of the list
-
-        queue_ptr = new_node;
-        contents->next = NULL;
-        
-        printf("Content created at the beginning of the list: %s\n", name);
-        return contents;
+        return storage_head;
     }
 
-    objectQueue_t *queue_ptr; // pointer to go through the list
-    
-    queue_ptr = contents;
-
-    while(queue_ptr->next != NULL){ //reach the last element of the list
-        queue_ptr = queue_ptr->next;		
-    }
-        
-    queue_ptr->next = new_node;
-    printf("\n%s was inserted in the list\n\n", name);
-    return queue_ptr;
-}//create
-
-
-
-objectQueue_t *delete(objectQueue_t *contents, char *name) {
-    
-    if(check_name(name) == 1){
-        printf("Error in delete: Invalid name\n");
-        return contents;
-    }
-
-    if(contents == NULL){
-        printf("Error in delete: No contents available\n");
-        return contents;
-    }
-
-    objectQueue_t *queue_ptr; // pointer to go through the list
-    objectQueue_t *aux; // auxiliary pointer to delete elements of the lists
-    queue_ptr = contents;
-
-    if(strcmp(contents->string, name) == 0){ //delete at the head of the list
-
-        aux = contents;
-        contents = contents->next;
-        free(aux->string);
-        free(aux);
-        printf("%s was successfuly deleted\n", name);
-        if(contents == NULL){
-            printf("\nThe list of contents is now empty\n\n");
-        }		
-        return contents;
-    }
-
-    while(queue_ptr != NULL){
-
-        if(queue_ptr->next == NULL && strcmp(queue_ptr->string, name) != 0){            
-            printf("Error in delete: The name was not found\n");
-            return contents;
-        }
-        
-        else if(strcmp(queue_ptr->string, name) == 0){ 
-
-            aux = queue_ptr;
-            queue_ptr = queue_ptr->next;
-            free(aux->string);
-            free(aux);
-            printf("The deletion of %s was successful\n", name);
-            if(queue_ptr == NULL){
-                printf("\nThe list of contents is now empty\n\n");
-            }
-            return contents;
-        }
-        
-        else if(strcmp(queue_ptr->next->string, name) == 0){
+    storage_head = storageInsert(storage_head, name);
+    return storage_head;
             
-            aux = queue_ptr->next;
-            queue_ptr->next = queue_ptr->next->next;
-            free(aux->string);
-            free(aux);
-            printf("The deletion of %s was successful\n", name);
-            return contents;
-        }
-        else queue_ptr = queue_ptr->next;
-    }    
-    return contents;
-}//delete
+}//create
 
 
 /*
