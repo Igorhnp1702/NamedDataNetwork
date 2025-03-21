@@ -195,22 +195,7 @@ void select_cmd(struct personal_node *personal, char *input){
         if(sscanf(input, "%*s %s", content) == 1){
             
             printf("Executing %s...\n\n", retrieve_str);
-            // retrieve(personal, content); // search and copy a content from another node    
-            // VER SE TENHO O OBJETO EM CACHE 
-            // SE NAO TIVER SEND INTERST 
-            // SE TIVER RETORNAR O OBJETO
-            
-            if (queueSearch(personal->queue_ptr, content)) {
-                send_object(personal->extern_node->node_fd, content, personal);
-                             
-            } 
-            else if (storageSearch(personal->storage_ptr, content)) {
-                send_object(personal->extern_node->node_fd, content, personal);
-            }
-            else {
-                send_interest(personal->extern_node->node_fd, content, personal);
-            }
-            
+            retrieve(personal, content); // search and copy a content from another node        
             return; 
         }
         else{
@@ -244,7 +229,7 @@ void select_cmd(struct personal_node *personal, char *input){
         if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
 
             printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_interest_table(personal); // show the interest table
+        
             return;
         }
         
@@ -258,8 +243,6 @@ void select_cmd(struct personal_node *personal, char *input){
 
     }//else if sn
 
-
-    
     else if(strcmp(cmd_str1, clear_names_str_short) == 0){
 
         printf("Executing %s...\n\n", cmd_str1);
@@ -273,13 +256,10 @@ void select_cmd(struct personal_node *personal, char *input){
         if(strcmp(personal->persn_info->network, "") == 0)
         
         printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-        show_interest_table(personal); // show the interest table
         
         return;
 
-    }
-    
-        //else if si
+    }//else if si
     
     else if(strcmp(cmd_str1, leave_str) == 0 || strcmp(cmd_str1, leave_str_short) == 0){
 
@@ -518,7 +498,6 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
 }//djoin
     
 
-
 objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100, alphanumeric chars only
 
     if(check_name(name) == 1){
@@ -552,7 +531,6 @@ objectQueue_t *create(objectQueue_t *queue_ptr, char *name){ // name size <= 100
     printf("\n%s was inserted in the list\n\n", name);
     return queue_ptr;
 }//create
-
 
 
 objectQueue_t *delete(objectQueue_t *contents, char *name) {
@@ -619,7 +597,6 @@ objectQueue_t *delete(objectQueue_t *contents, char *name) {
 }//delete
 
 
-/*
 int retrieve(struct personal_node *personal, char *name){
 
     int success_flag = 0;
@@ -628,7 +605,7 @@ int retrieve(struct personal_node *personal, char *name){
         return ++success_flag;
     }
     
-    //check the expedition table 
+    /* check the expedition table */
     
     int search_id = atoi(dest_id);  //integer to search the table of intern neighbors
     
@@ -676,10 +653,6 @@ int retrieve(struct personal_node *personal, char *name){
     }
     return 0;
 }//retrieve
-*/
-
-
-
 
 
 int show_topology(struct personal_node *personal){
