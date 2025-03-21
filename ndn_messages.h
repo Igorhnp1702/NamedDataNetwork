@@ -59,7 +59,7 @@ char* send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
 
 char *send_safe(int fd, char *ext_ip, char *ext_tcp);
 
-char *send_interest(int fd, char *object_name, struct personal_node *slf_node);
+void send_interest(int fd, char *object_name, struct personal_node *slf_node);
 
 char *send_object(int fd, char *object_name, struct personal_node *slf_node);
 

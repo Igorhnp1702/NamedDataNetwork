@@ -398,7 +398,7 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
 
 
 
-char *send_interest(int fd, char *object_name, struct personal_node *slf_node) {
+void send_interest(int fd, char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
@@ -454,11 +454,10 @@ char *send_interest(int fd, char *object_name, struct personal_node *slf_node) {
         current = current->next;
     }
 
+    free(buffer);
+    
 
-    memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
-    strcpy(buffer, "1"); //indicates that the message was sent
-
-    return buffer; // returning what was inside the file descriptor
+    return;
 }
 
 char *send_object(int fd, char *object_name, struct personal_node *slf_node) {
@@ -492,8 +491,7 @@ char *send_object(int fd, char *object_name, struct personal_node *slf_node) {
     }
 
     update_interface_state(slf_node->interest_table, object_name, fd, ANSWER);
-    memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
-    strcpy(buffer, "1"); //indicates that the message was sent
+    
 
     return buffer; // returning what was inside the file descriptor
 }
@@ -533,12 +531,12 @@ char *send_noobject(int fd, char *object_name, struct personal_node *slf_node) {
     
     // Close all interfaces that are waiting for the object
     for (int i = 0; i < MAX_ENTRIES; i++) {
-        if (slf_node->interest_table->entries[i].active &&
-            strcmp(slf_node->interest_table->entries[i].name, object_name) == 0) {
+        if (slf_node->interest_table->entries[i]->active &&
+            strcmp(slf_node->interest_table->entries[i]->name, object_name) == 0) {
             for (int j = 0; j < MAX_INTERFACES; j++) {
 
                 // Check if the interface is waiting for the object
-                if (slf_node->interest_table->entries[i].interfaces[j] == WAITING) {
+                if (slf_node->interest_table->entries[i]->interfaces[j] == WAITING) {
 
                     // Send NOOBJECT to the interface
                     ptr = buffer;
@@ -585,7 +583,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
     char ip_cmd[MAX_ADDRESS_SIZE];      //ip address of msg
     memset(ip_cmd, 0, sizeof(ip_cmd));
 
-    char object_buff[MAX_OBJECT_NAME];  //object of msg
+    char object_buff[MAX_NAME_LENGTH];  //object of msg
     memset(object_buff, 0, sizeof(object_buff));
 
     char snd_msg[MAX_MSG_LENGTH];       //buffer to send a response 
@@ -667,7 +665,11 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             if (waiting_interface != -1) {
                 // if someone is waiting for the object
                 // send object message to that node
-                send_object(waiting_interface, object_buff, slf_node);
+                return_msg = send_object(waiting_interface, object_buff, slf_node);
+                if (return_msg != NULL) {
+                    free(return_msg);
+                    return_msg = NULL;
+                }
 
                 // and place the object in cache
                 insertNew(slf_node->queue_ptr, object_buff);
@@ -695,7 +697,11 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             printf("Received NOOBJECT: %s\n", object_buff);
 
             // Send NOOBJECT to all interfaces that are waiting for the object
-            send_noobject(src_node->node_fd, object_buff, slf_node);
+            return_msg = send_noobject(src_node->node_fd, object_buff, slf_node);
+            if (return_msg != NULL) {
+                free(return_msg);
+                return_msg = NULL;
+            }
 
             // check if all interfaces are closed
             if (all_interfaces_closed(slf_node->interest_table, object_buff)) {

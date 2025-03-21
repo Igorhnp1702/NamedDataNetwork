@@ -131,7 +131,7 @@ int join(struct personal_node *personal, char *net);
 
 
 
- objectQueue_t *create(objectQueue_t *queue_ptr, char *name);
+ storageList_t *create(storageList_t *storage_head, char *object);
 
 // /***************************************************************
 //  * delete()
@@ -202,7 +202,7 @@ int show_topology(struct personal_node *personal);
 //  *
 //  *  Return: 0 on success; 1 on failure;
 //  **************************************************************/
-int show_names(objectQueue_t **queue_ptr);
+void show_names(storageList_t *storage_ptr);
 
 // /***************************************************************
 //  * show_interest_table()

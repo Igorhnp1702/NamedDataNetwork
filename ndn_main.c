@@ -181,7 +181,7 @@ int main(int argc, char **argv){
     printf("The application was launched successfuly\n\n");
     printf("\nType 'help' to show this help menu.\n\n");
     help_menu();            
-    printf("\n_________________________________________________________________\n\n");    
+        
     
     
     /* Initialize the node */
@@ -217,7 +217,7 @@ int main(int argc, char **argv){
     nodeinfo_t *node_aux = NULL;
     node_aux = contact_init(node_aux);
 
-    char *message;              // pointer to buffer, to use with read operation;
+    char *message = NULL;              // pointer to buffer, to use with read operation;
         
     FD_ZERO(&my_node->crr_scks);                              // Set the set of FD's to zero
     FD_SET(STDIN_FILENO, &my_node->crr_scks);                 // add stdin(keyboard input) to FD set    
@@ -249,8 +249,17 @@ int main(int argc, char **argv){
             free(my_node->personal_net);
             free(my_node->backup_addr);
             free(my_node->backup_tcp);
+            free_contact(&node_aux);
+            int i;
+            for (i = 0; i < MAX_ENTRIES; i++) {
+
+                free(my_node->interest_table->entries[i]);
                 
+            }
+            free(my_node->interest_table->entries);
+            free(my_node->interest_table);                
             free(my_node);
+            if(message != NULL) free(message);
             exit(1);                
         }
         
@@ -265,11 +274,20 @@ int main(int argc, char **argv){
                 if (fd_itr == STDIN_FILENO) {
                     memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'                                         
                     fgets(buffer, MAX_MSG_LENGTH-1, stdin);
-                    printf("\n_________________________________________________________________\n");
+                    printf("\n-------------------------------------------------------------------\n");
                     printf("Handling your command...");
-                    printf("\n_________________________________________________________________\n\n");
+                    printf("\n--------------------------------------------------------------------\n\n");
 
-                    select_cmd(my_node, buffer);                                        
+                    select_cmd(my_node, buffer);  
+                    
+                    if(my_node->exit_flag == 1){
+
+                        free(my_node);
+                        free_contact(&node_aux);
+                        if(message != NULL) free(message);
+                        printf("Exit executed successfully\n");
+                        exit(0);
+                    }
                     
                 }
 
@@ -516,7 +534,10 @@ int main(int argc, char **argv){
                                     printf("Error in main: failed to parse a message\n");
                                                                         
                                 }
-                                if(message != NULL)free(message);
+                                if(message != NULL){
+                                    free(message);
+                                    message = NULL;
+                                }
                             }
 
                         }else if(fd_itr == node_aux->node_fd){
@@ -531,7 +552,11 @@ int main(int argc, char **argv){
                                     printf("Error in main: failed to parse a message\n");
                                     
                                 }
-                                if(message != NULL)free(message);
+                                if(message != NULL){
+                                    free(message);
+                                    message = NULL;
+                                }
+                                    
                             }
 
                         }else{
@@ -552,7 +577,10 @@ int main(int argc, char **argv){
                                             printf("Error in main: failed to parse a message\n");
                                             
                                         }
-                                        if(message != NULL)free(message);
+                                        if(message != NULL){
+                                            free(message);
+                                            message = NULL;
+                                        }
                                     }
                                     break;
                                 } 

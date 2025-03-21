@@ -28,21 +28,21 @@ typedef enum {
 } InterfaceState;
 
 // Structure of an entry in the interest table
-typedef struct {
+typedef struct InterestEntry{
     char name[MAX_NAME_LENGTH];                // Object name
     InterfaceState interfaces[MAX_INTERFACES]; // Interfaces' states
     int active;                                // 1 = Active, 0 = Inactive
 } InterestEntry;
 
 // Structure of the interest table
-typedef struct {
-    InterestEntry entries[MAX_ENTRIES];
+typedef struct InterestTable{
+    InterestEntry **entries;
 } InterestTable;
 
 
 
 
-void init_interest_table(InterestTable *table);
+InterestTable *init_interest_table(InterestTable *table);
 int add_interest(InterestTable *table, char *name, InterfaceState initial_state);
 int remove_interest(InterestTable *table, char *name);
 void update_interface_state(InterestTable *table, char *name, int interface_index, InterfaceState state);

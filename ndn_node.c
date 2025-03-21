@@ -93,6 +93,7 @@ struct personal_node *personal_init(struct personal_node *personal){
     personal->n_internals = 0;    // counter for the number of internal neighbors    
     personal->max_fd = 0;        // the maximum integer assigned to a file descriptor
     personal->cache_limit = 0;
+    personal->exit_flag = 0;
 
     personal->personal_addr = NULL;
     personal->personal_tcp = NULL;  
@@ -111,7 +112,8 @@ struct personal_node *personal_init(struct personal_node *personal){
     //init neighbors list
     personal->internals_list = NULL;
     personal->internals_list = Listinit(personal->internals_list);
-    init_interest_table(&personal->interest_table);
+    personal->interest_table = NULL;
+    personal->interest_table = init_interest_table(personal->interest_table);
     
     return personal;
 }//personal_init()

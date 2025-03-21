@@ -217,7 +217,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("Failed to read arguments of %s\n", retrieve_str); 
             return;
         } 
-    }//else if retreive or r
+    }//else if retrieve or r
 
     else if(strcmp(cmd_str1, show_topology_str_short) == 0){
         
@@ -237,14 +237,14 @@ void select_cmd(struct personal_node *personal, char *input){
 
         if(strcmp(cmd_str2, names_str) == 0){
             printf("Executing %s %s...\n\n", show_str, names_str);
-            show_names(&personal->queue_ptr); // show names of the personal node
+            show_names(personal->storage_ptr); // show names of the personal node
             return;
         }
 
         if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
 
             printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_interest_table(personal); // show the interest table
+            show_interest_table(personal->interest_table); // show the interest table
             return;
         }
         
@@ -253,7 +253,7 @@ void select_cmd(struct personal_node *personal, char *input){
     else if(strcmp(cmd_str1, show_names_str_short) == 0){
         
         printf("Executing %s...\n\n", cmd_str1);
-        show_names(&personal->queue_ptr); // show names of the personal node
+        show_names(personal->storage_ptr); // show names of the personal node
         return;
 
     }//else if sn
@@ -276,7 +276,7 @@ void select_cmd(struct personal_node *personal, char *input){
         }
         else{
             printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_interest_table(personal); // show the interest table
+            show_interest_table(personal->interest_table); // show the interest table
         }                        
         return;
 
@@ -311,18 +311,18 @@ void select_cmd(struct personal_node *personal, char *input){
         personal->queue_ptr = clearQueue(personal->queue_ptr);
         free(personal->personal_net);
         free(personal->backup_addr);
-        free(personal->backup_tcp);   
-        
-        for (int i = 0; i < MAX_ENTRIES; i++) {
-            for (int j = 0; j < MAX_INTERFACES; j++) {
-                free((personal->interest_table)->entries[i].interfaces[j]);  // free all interfaces
-            }
-            free((personal->interest_table)->entries[i]); // free all entries
+        free(personal->backup_tcp);
+        int i;
+        for (i = 0; i < MAX_ENTRIES; i++) {
+
+            free(personal->interest_table->entries[i]);
+            
         }
-        free(personal->interest_table);
-        free(personal);
-        printf("Exit executed successfully\n");
-        exit(0);
+        free(personal->interest_table->entries);
+        free(personal->interest_table)   ;
+        personal->exit_flag = 1;        
+        
+        
 
     }//else if exit
 
@@ -542,68 +542,24 @@ storageList_t *create(storageList_t *storage_head, char *name){ // name size <= 
             
 }//create
 
+void show_names(storageList_t *storage_ptr){
 
-/*
-int retrieve(struct personal_node *personal, char *name){
-
-    int success_flag = 0;
-    if(strcmp(personal->persn_info->network, "") == 0){
-        printf("Error in retrieve: You are not inside a network\n");
-        return ++success_flag;
+    if(storage_ptr == NULL){
+        printf("No names to show\n");
+        return;
     }
-    
-    //check the expedition table 
-    
-    int search_id = atoi(dest_id);  //integer to search the table of intern neighbors
-    
-    int gateway = -1;                      //id of neighbor to send something to the destination
-    char retrieve_buffer[MAX_MSG_LENGTH];     //buffer for the "QUERY" message
-    
-    memset(retrieve_buffer, 0, sizeof(retrieve_buffer));
 
-    sprintf(retrieve_buffer,"RETRIEVE %s %s\n", name);    
+    int counter = 1;
+    storageList_t *aux = storage_ptr;
 
-    if(personal->route_tab[search_id] == search_id){ // destination is equal to the neighbor, but what type of neighbor?
-
-        if(strcmp(personal->extern_node->node_id, dest_id) == 0 || strcmp(personal->backup_node->node_id, dest_id) == 0 ){ // extern/backup neighbor
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->extern_node, retrieve_buffer);                        
-        }
-        else{
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->internals_array[search_id], retrieve_buffer); // intern neighbor 
-        }                               
+    printf("Showing names\n\n");
+    while(aux != NULL){
+        printf("Name %d: %s\n", counter, aux->object);
+        counter++;
+        aux = aux->next;
     }
-    else if(personal->route_tab[search_id] != -1){ // destination is initialized and is different from the neighbor
-
-        gateway = personal->route_tab[search_id];
-        if(gateway == atoi(personal->extern_node->node_id) || gateway == atoi(personal->backup_node->node_id)){
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->extern_node, retrieve_buffer);
-        }
-        else{
-            printf("Sending: %s\n", retrieve_buffer);
-            send_tcp(personal, personal->internals_array[gateway], retrieve_buffer);
-        }        
-    }
-    else{ //destination is not a neighbor and it is not initialized
-        printf("Sending: %s\n", retrieve_buffer);
-        send_tcp(personal, personal->extern_node, retrieve_buffer);
-
-        for(int iter = 0; iter < MAX_INTERNALS; iter++){
-
-            if(personal->internals_array[iter] != NULL){
-                printf("Sending: %s\n", retrieve_buffer);
-                send_tcp(personal, personal->internals_array[iter], retrieve_buffer);                
-            }
-        }
-    }
-    return 0;
-}//retrieve
-*/
-
-
-
+    return;
+}
 
 
 int show_topology(struct personal_node *personal){
@@ -686,35 +642,38 @@ int show_topology(struct personal_node *personal){
 
 int leave(struct personal_node *personal) {
             
-    if(personal->join_flag == 1){
-        if ((node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp,
-             personal->personal_net)) == NULL){
+    if(personal->network_flag == 1){
+        if(personal->join_flag == 1){
+            if ((node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp,
+                personal->personal_net)) == NULL){
 
-            printf("Error in leave: Failed to unregister the node. The connections are still open.\n");
-            return 1;
+                printf("Error in leave: Failed to unregister the node. The connections are still open.\n");
+                return 1;
 
+            }
+            // check return value of node_unreg
+            personal->join_flag = 0;
+            strcpy(personal->personal_net, "");
         }
-        // check return value of node_unreg
-        personal->join_flag = 0;
-        strcpy(personal->personal_net, "");
-    }
-    
-    // close connections 
-    int i = 0;
-    for (i = 3; i <= personal->max_fd; i++) {
-        if (FD_ISSET(i, &personal->crr_scks)) {
-            FD_CLR(i, &personal->crr_scks);
-            close(i);
+        
+        // close connections 
+        int i = 0;
+        for (i = 3; i <= personal->max_fd; i++) {
+            if (FD_ISSET(i, &personal->crr_scks)) {
+                FD_CLR(i, &personal->crr_scks);
+                close(i);
+            }
         }
-    }
-    personal->network_flag = 0;    
+        personal->network_flag = 0;
+        printf("left the network successfully\n");
+    }    
     personal = reset_personal(personal);
-    printf("leave executed successfully\n");
+    
     return 0;
 }//leave
 
 void help_menu() {
-        printf("-----------------HELP MENU-----------------\n\n");
+        printf("--------------------------------------------HELP MENU-------------------------------------\n\n");
         printf("To use the application, insert one of the following commands:\n");
         printf("Note: curved brackets => valid abreviations; square brackets => arguments\n\n");
         printf("join (j) [desired network] \n");
@@ -728,7 +687,7 @@ void help_menu() {
         printf("clear names (cn)\n");
         printf("leave (l)\n");
         printf("exit (x)\n");
-        printf("\n-------------------------------------------\n\n");
+        printf("\n----------------------------------------------------------------------------------------\n\n");
         return;
 }//help_menu
 

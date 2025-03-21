@@ -182,8 +182,14 @@ objectQueue_t *deleteObject(objectQueue_t *queue_ptr, char *string){
 
 objectQueue_t *clearQueue(objectQueue_t *queue_ptr){
 
+    if(queue_ptr == NULL){
+        printf("Failed to clear cache because it's not initialized\n");
+        return queue_ptr;
+    }
+
     if((queue_ptr->tail == NULL) && (queue_ptr->head == NULL)){
-        printf("Failed to clear cache because it's empty\n");
+        free(queue_ptr);
+        queue_ptr = NULL;
         return queue_ptr;
     }
 

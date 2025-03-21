@@ -83,6 +83,7 @@ int n_internals;                    // counter for the number of internal neighb
 int max_fd;                         // the maximum integer assigned to a file descriptor in this node's FD set
 int cache_limit;
 int server_fd;                      // to accept connections with other nodes
+int exit_flag;
 char *personal_addr;
 char *personal_tcp;
 char *personal_net;
