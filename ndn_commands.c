@@ -308,7 +308,15 @@ void select_cmd(struct personal_node *personal, char *input){
         personal->queue_ptr = clearQueue(personal->queue_ptr);
         free(personal->personal_net);
         free(personal->backup_addr);
-        free(personal->backup_tcp);        
+        free(personal->backup_tcp);   
+        
+        for (int i = 0; i < MAX_ENTRIES; i++) {
+            for (int j = 0; j < MAX_INTERFACES; j++) {
+                free((personal->interest_table)->entries[i].interfaces[j]);  // free all interfaces
+            }
+            free((personal->interest_table)->entries[i]); // free all entries
+        }
+        free(personal->interest_table);
         free(personal);
         printf("Exit executed successfully\n");
         exit(0);

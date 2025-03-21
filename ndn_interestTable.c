@@ -13,12 +13,12 @@
 
 
 // Initialize the interest table
-void init_interest_table(InterestTable *table) {
+void init_interest_table(InterestTable **table) {
     for (int i = 0; i < MAX_ENTRIES; i++) {
-        table->entries[i].active = 0;                       // There are no active entries
-        memset(table->entries[i].name, 0, MAX_NAME_LENGTH);
+        (*table)->entries[i].active = 0;                       // There are no active entries
+        memset((*table)->entries[i].name, 0, MAX_NAME_LENGTH);
         for (int j = 0; j < MAX_INTERFACES; j++) {
-            table->entries[i].interfaces[j] = CLOSED;       // All interfaces are closed
+            (*table)->entries[i].interfaces[j] = CLOSED;       // All interfaces are closed
         }
     }
 }
@@ -69,12 +69,12 @@ void update_interface_state(InterestTable *table, char *name, int interface_inde
 }
 
 // Delete all entries
-void clear_interest_table(InterestTable *table) {
+void clear_interest_table(InterestTable **table) {
     for (int i = 0; i < MAX_ENTRIES; i++) {
-        table->entries[i].active = 0;  // Set the entry as inactive
-        memset(table->entries[i].name, 0, MAX_NAME_LENGTH);
+        (*table)->entries[i].active = 0;  // Set the entry as inactive
+        memset((*table)->entries[i].name, 0, MAX_NAME_LENGTH);
         for (int j = 0; j < MAX_INTERFACES; j++) {
-            table->entries[i].interfaces[j] = CLOSED;  // Close all interfaces
+            (*table)->entries[i].interfaces[j] = CLOSED;  // Close all interfaces
         }
     }
 }
@@ -148,7 +148,7 @@ InterfaceState search_interest_interface_state(InterestTable *table, char *name,
 }
 
 // Show all entries in the interest table
-void show_interest_table(const InterestTable *table) {
+void show_interest_table(InterestTable *table) {
     printf("Interest Table:\n");
     for (int i = 0; i < MAX_ENTRIES; i++) {
         if (table->entries[i].active) {
