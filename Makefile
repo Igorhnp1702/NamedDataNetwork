@@ -62,5 +62,8 @@ val:
 
 # Some program calls:
 
-# ./ndn 10 127.0.0.1 51000 
-# ./ndn 10 193.236.216.177 51000
+# ./ndn 10 127.0.0.1 58000 
+# ./ndn 10 $(hostname -I | cut -d ' ' -f1) 58000
+
+# valgrind --leak-check=full --show-leak-kinds=all ./ndn 10 127.0.0.1 58000
+# valgrind --leak-check=full --show-leak-kinds=all ./ndn 10 $(hostname -I | cut -d ' ' -f1) 58000

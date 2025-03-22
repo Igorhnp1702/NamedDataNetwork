@@ -267,6 +267,7 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         *fd = socket(AF_INET, SOCK_STREAM, 0);
         if(*fd == -1){
             printf("Send entry: Error initializing socket.\n");
+            free(buffer);
             return NULL;
         }
         //setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
@@ -275,7 +276,10 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         act.sa_handler = SIG_IGN;
 
         if(sigaction(SIGPIPE, &act, NULL) == -1){
-            printf("Send entry: Error in sigaction().\n");            
+            printf("Send entry: Error in sigaction().\n");
+            close(*fd);
+            *fd = -1;
+            free(buffer);            
             return NULL;
         }
 
@@ -286,6 +290,10 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         errflag = getaddrinfo(dest_ip, dest_tcp, &srv_criteria, &srv_result);
         if(errflag != 0){
             printf("Send entry: Error in getaddrinfo()\n");
+            close(*fd);
+            *fd = -1;
+            free(buffer);
+            freeaddrinfo(srv_result);
             return NULL;
         }
 
@@ -294,6 +302,9 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         if(errflag == -1){
             printf("Send entry: Error in connect(): %s\n", strerror(errno));
             close(*fd);
+            *fd = -1;
+            free(buffer);
+            freeaddrinfo(srv_result);
             return NULL;
         }
 
@@ -310,6 +321,8 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         if(nwritten <= 0){
             printf("Send entry: Error in write\n");
             close(*fd);
+            *fd = -1;
+            free(buffer);
             return NULL;
         }
         nleft -= nwritten;
@@ -342,6 +355,8 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
         nwritten = write(fd, ptr, nleft);
         if(nwritten <= 0){
             printf("Send safe: Error in write\n");
+            close(fd);
+            free(buffer);            
             return NULL;
         }
         nleft -= nwritten;
@@ -681,7 +696,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         if (sscanf(msg, "%*s %s %s", ip_cmd, tcp_cmd) == 2){
             
             printf("\nMessage received from a new intern neighbor:\n");
-            printf("%s\n", msg);
+            printf("%s\n\n", msg);
 
             if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network. Answer with SAFE, followed by an ENTRY
 
@@ -689,10 +704,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 
                 strcpy(src_node->tcp_port, tcp_cmd);
                 strcpy(src_node->node_addr, ip_cmd);
-                
-
-                slf_node->internals_list = insertnode(slf_node->internals_list, src_node);
-                slf_node->n_internals++;                                
+                                                              
 
                 printf("Sending %s %s %s\n", safe_str, ip_cmd, tcp_cmd);
                 return_msg = send_safe(src_node->node_fd, ip_cmd, tcp_cmd);
@@ -751,10 +763,9 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 strcpy(src_node->tcp_port, tcp_cmd);
                 strcpy(src_node->node_addr, ip_cmd);                
 
-                slf_node->internals_list = insertnode(slf_node->internals_list, src_node);
-                slf_node->n_internals++;
                 
-                printf("Sending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                
+                printf("\nSending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 return_msg = send_safe(src_node->node_fd, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 
                 if (strcmp(return_msg, "1") == 0) {

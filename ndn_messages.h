@@ -15,7 +15,7 @@
  
  #define DEFAULT_REGIP "193.136.138.142"  // default IPv4 address of the node server
  #define DEFAULT_REGUDP "59000"           // default UDP port of the node server
- #define MAX_QUEUE_LENGTH_TCP 6           // maximium size of the tcp queue 
+ #define MAX_QUEUE_LENGTH_TCP 100         // maximium size of the tcp queue 
  #define MAX_MSG_LENGTH 200               // size of the buffer for the messages (incoming/outgoing)
  #define MAX_USR_CMD_LENGTH 150           // size of the buffer for the commands
  #define MAX_NAME_LENGTH 101              // size of the buffer for the contents (max chars = 100 + null terminator)

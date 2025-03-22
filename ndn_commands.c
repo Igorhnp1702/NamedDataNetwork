@@ -305,21 +305,7 @@ void select_cmd(struct personal_node *personal, char *input){
         // free the memory, close the fds and get out of the program     
         
         printf("Executing %s...\n\n", exit_str);
-        if(personal->network_flag == 1) leave(personal);                
-                        
-        free_contact(&(personal->extern_node));
-        personal->queue_ptr = clearQueue(personal->queue_ptr);
-        free(personal->personal_net);
-        free(personal->backup_addr);
-        free(personal->backup_tcp);
-        int i;
-        for (i = 0; i < MAX_ENTRIES; i++) {
-
-            free(personal->interest_table->entries[i]);
-            
-        }
-        free(personal->interest_table->entries);
-        free(personal->interest_table);
+        
         personal->exit_flag = 1;        
         
         
@@ -456,6 +442,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         printf("Error in socket()\n");
         printf("This node cannot belong to a network.\n");
         printf("Because of this, the process will be terminated\n");
+        personal->exit_flag = 1;
         // free and close everything
         return 1;        
     }
@@ -476,6 +463,9 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         printf("Error in getaddrinfo()\n");
         printf("This node cannot belong to a network.\n");
         printf("Because of this, the process will be terminated\n");
+        personal->exit_flag = 1;
+        FD_CLR(personal->server_fd, &personal->crr_scks);
+        close(personal->server_fd);        
         // free and close everything
         return 1;
     }
@@ -487,6 +477,9 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         printf("Error in bind()\n");
         printf("This node cannot belong to a network.\n");
         printf("Because of this, the process will be terminated\n");
+        personal->exit_flag = 1;
+        FD_CLR(personal->server_fd, &personal->crr_scks);
+        close(personal->server_fd);
         // free and close everything
         return 1;
     }
@@ -500,14 +493,34 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         printf("This node cannot belong to a network.\n");
         printf("Because of this, the process will be terminated\n");
         // free and close everything
+        FD_CLR(personal->server_fd, &personal->crr_scks);
+        close(personal->server_fd);
+        personal->exit_flag = 1;
         return 1;
     }
     
 
     if (strcmp(connectIP, "0.0.0.0") == 0) {  //First node of the network
+        
+        if(strcmp(connectTCP, personal->personal_tcp) != 0){
+            printf("If you're the first node, please use your port. Command ignored\n");
+            FD_CLR(personal->server_fd, &personal->crr_scks);
+            close(personal->server_fd);
+            return 1;
+        }
         personal->anchorflag = 1;             //!confirmar        
         personal->network_flag = 1;                
         
+    }
+
+    else if((strcmp(connectTCP, personal->personal_tcp) == 0) && (strcmp(connectIP, personal->personal_addr)) == 0){
+        
+        printf("You can't connect to yourself.\n");
+        printf("If you're the first node, please use 0.0.0.0 as the connect IPv4 address and make sure to use your port.\n");
+        printf("Command ignored\n");
+        FD_CLR(personal->server_fd, &personal->crr_scks);
+        close(personal->server_fd);
+        return 1;
     }
     else{
                 
@@ -604,9 +617,11 @@ int show_topology(struct personal_node *personal){
             printf("Adress: %s\nPort: %s\n\n",                  
             personal->extern_node->node_addr, 
             personal->extern_node->tcp_port);
-            
-            
+                        
+        }else {
+            printf("\nThere is no extern neighbor!\n");
         }
+
     }
     else {
         printf("\nThere is no extern neighbor!\n");
@@ -625,11 +640,11 @@ int show_topology(struct personal_node *personal){
         
     if(personal->internals_list == NULL){
           
-        printf("\nThere are no internal neighbors\n");        
+        printf("\nThere are no intern neighbors\n");        
                 
     }
     else{
-        printf("\n\nPrinting internal neighbors: \n\n");        
+        printf("\n\nPrinting intern neighbors: \n\n");        
             
         aux = personal->internals_list;
         while(aux != NULL){
@@ -641,7 +656,7 @@ int show_topology(struct personal_node *personal){
             printed_interns++;                        
             aux = aux->next;
         }
-        printf("Number of internals: %d\n", printed_interns);
+        printf("Number of interns: %d\n", printed_interns);
     }
         
     return success_flag;

@@ -240,6 +240,8 @@ nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
     }
 
     aux->next = new_block;
+    if(strcmp(new_node->node_addr,"") == 0) return head;
+    
     printf("\nSuccessfully inserted [%s | %s] in a list\n", new_node->node_addr, new_node->tcp_port);
     return head;
 
@@ -259,7 +261,8 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 
 		printf("\n[%s | %s] was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
         aux = head;
-		head = head->next;            
+		head = head->next;
+        close(aux->node->node_fd);
 		free_contact(&(aux->node));		
 		free(aux);		
 		if(head == NULL){
@@ -279,7 +282,8 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 
 			printf("\n[%s | %s] was removed from the internals list\n\n", listptr->node->node_addr, listptr->node->tcp_port);
             aux = listptr;
-			listptr = listptr->next;			
+			listptr = listptr->next;
+            close(aux->node->node_fd);			
 			free_contact(&(aux->node));
 			free(aux);
 			
@@ -292,7 +296,8 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 			
 			printf("\n[%s | %s] was removed from the internals list\n\n", listptr->next->node->node_addr, listptr->next->node->tcp_port);
             aux = listptr->next;
-			listptr->next = listptr->next->next;			
+			listptr->next = listptr->next->next;
+            close(aux->node->node_fd);			
 			free_contact(&(aux->node));
 			free(aux);
 			
