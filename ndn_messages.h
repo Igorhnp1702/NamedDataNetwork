@@ -23,6 +23,11 @@
  #define MAX_NET_CHARS 4                  // number of chars required for the network number (with '\0')
  #define MAX_TCP_UDP_CHARS 6              // number of chars required for the tcp/udp ports(with '\0')
  #define MAX_MSG_CMD_SIZE 9               // size of the biggest message protocol (NOOBJECT = 8 bytes + null terminator)
+ #define MAX_NODESLIST 2214               
+
+ // 9(NODESLIST) + 1(space) + 3(net) + 1(\n) = 14
+ // 15(max ip) + 1(space) + 5(max tcp) + 1(\n) = 22
+ // 14 + 22*100 = 2214
 
 
 // set of strings for the messages

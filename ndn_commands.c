@@ -319,7 +319,7 @@ void select_cmd(struct personal_node *personal, char *input){
             
         }
         free(personal->interest_table->entries);
-        free(personal->interest_table)   ;
+        free(personal->interest_table);
         personal->exit_flag = 1;        
         
         
@@ -349,6 +349,7 @@ int join(struct personal_node *personal, char *net) {
     int success_flag = 0;
     char picked_ip[16];
     char picked_tcp[6];
+    char *return_msg;
                 
     // check the arguments
 
@@ -361,6 +362,10 @@ int join(struct personal_node *personal, char *net) {
         printf("Please insert a three digit network from 000 to 999\n");
         return ++success_flag;
     }
+    if((strcmp("127.0.0.1", personal->personal_addr)) == 0){
+        printf("You cannot use the loopback address to reach the node server. Command ignored\n");
+        return ++success_flag;
+    }
     
     // inquire the server about the nodes in the network
             
@@ -371,21 +376,18 @@ int join(struct personal_node *personal, char *net) {
         return ++success_flag;
     }            
 
-    if(nodeslist != NULL){ // if the network is not empty, pick the first node
+    if((strcmp(nodeslist->node->node_addr, "")) != 0){ // if the network is not empty, pick the first node
+                
+        strcpy(picked_ip, nodeslist->node->node_addr);
+        strcpy(picked_tcp, nodeslist->node->tcp_port);
+                                            
+        // try to connect
 
-        
-        if((strcmp(nodeslist->node->node_addr, "")) != 0){    
-
-            strcpy(picked_ip, nodeslist->node->node_addr);
-            strcpy(picked_tcp, nodeslist->node->tcp_port);
-                                                
-            // try to connect
-
-            if(djoin(personal, picked_ip, picked_tcp) == 1) {
-                printf("Error in join: Failed to connect to a node in the desired network\n");
-                return ++success_flag;
-            }
+        if(djoin(personal, picked_ip, picked_tcp) == 1) {
+            printf("Error in join: Failed to connect to a node in the desired network\n");
+            return ++success_flag;
         }
+        
     }
     else{ // empty network, 
         
@@ -398,16 +400,20 @@ int join(struct personal_node *personal, char *net) {
         }
     }
 
-    // try to register the node
+    strcpy(personal->personal_net,net);
 
-    if(strcmp(node_reg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, net), "1") != 0){
+    // try to register the node
+    return_msg = node_reg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, net);
+    if(return_msg == NULL){
         
         printf("Error in join: Failed to register the node\n");
-        node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, net);
+        nodeslist = clearlist(nodeslist);        
         return ++success_flag;
     }
-    personal->join_flag = 1;         
+    personal->join_flag = 1;
+             
     nodeslist = clearlist(nodeslist);
+    free(return_msg);
      
     return success_flag;
 
@@ -515,13 +521,15 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
             return 1;
         }
         
-        printf("\nENTRY message delivered to [%s | %s]\n", connectIP, connectTCP);
-        printf("Updating external neighbor\n");
+        printf("\nENTRY message delivered to [%s | %s]\n", connectIP, connectTCP);        
         free(return_msg);        
 
         //personal->extern_node = contact_init(personal->extern_node);                
         strcpy(personal->extern_node->tcp_port, connectTCP);
         strcpy(personal->extern_node->node_addr, connectIP);
+
+        printf("New extern neighbor:\n");
+        printf("Address:%s\nPort:%s\n", personal->extern_node->node_addr, personal->extern_node->tcp_port);
         //personal->extern_node->safe_flag = 1;
         personal->network_flag = 1;
     }
@@ -642,15 +650,19 @@ int show_topology(struct personal_node *personal){
 
 int leave(struct personal_node *personal) {
             
+    char *return_msg;
+    
     if(personal->network_flag == 1){
         if(personal->join_flag == 1){
-            if ((node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp,
-                personal->personal_net)) == NULL){
+
+            return_msg = node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, personal->personal_net);
+            if (return_msg == NULL){
 
                 printf("Error in leave: Failed to unregister the node. The connections are still open.\n");
                 return 1;
 
             }
+            free(return_msg);
             // check return value of node_unreg
             personal->join_flag = 0;
             strcpy(personal->personal_net, "");

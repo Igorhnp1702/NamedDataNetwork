@@ -96,7 +96,7 @@ struct personal_node *personal_init(struct personal_node *personal){
     personal->exit_flag = 0;
 
     personal->personal_addr = NULL;
-    personal->personal_tcp = NULL;  
+    personal->personal_tcp = NULL;   
     personal->udp_port = NULL;   //UDP server port
     personal->udp_address = NULL;    //UDP server address
     personal->extern_node = NULL;   //extern neighbor node

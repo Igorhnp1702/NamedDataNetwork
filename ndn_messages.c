@@ -76,14 +76,8 @@
         printf("Error in node_reg: Failed to receive confirmation from the server\n");
         return NULL;
     }
-     
-    buffer[cnt] = '\0';
-
+         
     printf("Response from the node server: %s\n", buffer);
-
-    if (strcmp(inet_ntoa(addr_conf.sin_addr), server_IP) != 0) { //Verification
-        strcpy(buffer, "0");
-    }
 
     close(fd);
     return buffer;
@@ -130,13 +124,8 @@
         printf("Error in node_reg: Failed to receive confirmation from the server\n");
         return NULL;
     } 
-    buffer[cnt] = '\0';
-
+    
     printf("Response from the node server: %s\n", buffer);
-
-    if (strcmp(inet_ntoa(addr_conf.sin_addr), server_IP) != 0) { //Verification
-        strcpy(buffer, "0");
-    }
 
     close(fd);
     return buffer;
@@ -146,32 +135,37 @@
 nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){// request the list of nodes in the network
 
     struct addrinfo srv_criteria, *srv_result;
-    int fd, errflag;
-    ssize_t cnt;
+    int fd, errflag, counter = 0;
+    ssize_t cnt = 0;
     struct sockaddr_in addr_conf;
     socklen_t addrlen_conf;
-
+    char nodeslist_bff[MAX_NODESLIST]; memset(nodeslist_bff, 0, MAX_NODESLIST);
+    
     nodesLinkedlist_t *serverlist = NULL; serverlist = Listinit(serverlist);    
     nodeinfo_t *temp = NULL; temp = contact_init(temp);
     
     
-    char inquiry[11]; // 5(nodes) + 1(space) + 3(net) + 1(\n) + 1(\0) = 11 
-    memset(inquiry, 0, 11*sizeof(char));
+    char *inquiry = NULL; 
+    if((inquiry = (char*)calloc(11, sizeof(char))) == NULL){ // 5(nodes) + 1(space) + 3(net) + 1(\n) + 1(\0) = 11 
+        
+        printf("Error in server_inquiry: failed to allocate memory. Process terminated\n");
+        exit(1);
+    }
+    
 
-    char first_line[15]; memset(first_line, 0, 14*sizeof(char));
-    // 9(nodeslist) + 1(space) + 3(net) + 1(\n) + 1(\0)= 15
-
-    char max_nodeline[23]; memset(max_nodeline, 0, 22*sizeof(char));
-    //15(max ip) + 1(space) + 5(tcp) + 1(\n) + 1(\0) = 23
-
-    char nodeline_copy[23]; memset(nodeline_copy, 0, 23*sizeof(char));
-
+    char *first_line = NULL;           
+       
     char delim[2] = "\n";
     char *one_line;
 
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
-    if(fd == -1) return NULL;
-
+    if(fd == -1){
+        return NULL;
+        free(first_line);        
+        free(inquiry);
+        free_contact(&temp);
+    } 
+    
     memset(&srv_criteria, 0, sizeof(srv_criteria));
     srv_criteria.ai_family = AF_INET;
     srv_criteria.ai_socktype = SOCK_DGRAM;
@@ -182,7 +176,14 @@ nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){
     sprintf(inquiry, "%s %s\n", nodes_str, net);
 
     cnt = sendto(fd, inquiry, strlen(inquiry), 0, srv_result->ai_addr, srv_result->ai_addrlen);
-    if(cnt == -1) return NULL;
+    if(cnt == -1){
+
+        close(fd);
+        free(first_line);                
+        free(inquiry);
+        free_contact(&temp);
+        return NULL;
+    } 
 
     printf("Inquiry sent to the node server: %s %s\n\n", nodes_str, net);
 
@@ -190,96 +191,54 @@ nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){
 
     addrlen_conf = sizeof(struct sockaddr_in);
     
-    cnt = recvfrom(fd, first_line, 14, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
+    cnt = recvfrom(fd, nodeslist_bff, MAX_NODESLIST, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
     
     if(cnt == -1){
+       
         printf("Failed to get the list of nodes from the server\n");
+        
+        close(fd);               
+        free(inquiry);
+        free_contact(&temp);
         return NULL;
     }
-
+    first_line = strtok(nodeslist_bff,delim);
     printf("Response from the node server\n\n");
-    printf("%s", first_line);
+    printf("%s\n\n", first_line);
 
-    while((cnt = recvfrom(fd, max_nodeline, 22, 0,(struct sockaddr *)&addr_conf, &addrlen_conf)) > 0){
+    while((one_line = strtok(NULL, delim)) != NULL){
 
-        if((strcmp(nodeline_copy, "")) == 0){
+        if((sscanf(one_line, "%s %s", temp->node_addr, temp->tcp_port)) == 2){
 
-            // nothing to concatenate
-
-            if((strchr(max_nodeline, '\n')) != NULL){
-
-                //full line found
-                one_line = strtok(max_nodeline, delim);
-                if((sscanf(one_line, "%s %s", temp->node_addr, temp->tcp_port)) == 2){
-
-                    serverlist = insertnode(serverlist, temp);
-                    printf("%s %s\n", temp->node_addr, temp->tcp_port);                    
-                }else{
-                    printf("Failed to read one line of NODESLIST\n");
-                }
-                // store the rest in nodeline copy
-
-                strcat(nodeline_copy, max_nodeline);
-                memset(max_nodeline, 0, 23*sizeof(char));
-                
-            }else{
-                // full line not found
-                // but the content may be there
-                //store it in nodeline copy
-
-                strcat(nodeline_copy, max_nodeline);
-                memset(max_nodeline, 0, 23*sizeof(char));
-            }            
+            serverlist = insertnode(serverlist, temp);
+            counter++;
+            printf("%s %s\n", temp->node_addr, temp->tcp_port);                    
         }else{
-
-            // nodeline copy is not empty, perform concatenation until \n
-
-            if((strchr(max_nodeline, '\n')) != NULL){
-
-                //other part of the line found
-                one_line =strcat(nodeline_copy, strtok(max_nodeline, delim));
-                if((sscanf(one_line, "%s %s", temp->node_addr, temp->tcp_port)) == 2){
-
-                    serverlist = insertnode(serverlist, temp);
-                    printf("%s %s\n", temp->node_addr, temp->tcp_port);                    
-                }else{
-                    printf("Failed to read one line of NODESLIST\n");
-                }
-                // reset nodeline copy
-                // store the rest in nodeline copy
-                
-                memset(nodeline_copy, 0, 23*sizeof(char));
-                strcat(nodeline_copy, max_nodeline);
-                memset(max_nodeline, 0, 23*sizeof(char));
-                
-            }else{
-                // full line not found
-                // but the content may be there
-                //store it in nodeline copy
-
-                if((strlen(nodeline_copy) + strlen(max_nodeline)) < 22){
-                
-                    strcat(nodeline_copy, max_nodeline);
-                    memset(max_nodeline, 0, 23*sizeof(char));
-                }
-            } 
-        }
+            printf("Failed to read one line of NODESLIST\n");
+        }                
     }
 
-    if(cnt == -1){
-        printf("Recvfrom failed somewhere. Returning the current list\n");
-        close(fd);
+    if(counter == 0){ // serverlist is null
+        printf("Zero nodes reported\n");
+        close(fd);                
+        free(inquiry);
+        free_contact(&temp);
+        if((serverlist = (nodesLinkedlist_t*)calloc(1, sizeof(nodesLinkedlist_t))) == NULL){
+            printf("Error in server_inquiry: failed to allocate memory. Process terminated\n");
+            exit(1);
+        }
+        serverlist->node = contact_init(serverlist->node);
         return serverlist;
         
     }
 
-    close(fd);
+    close(fd);    
+    free(inquiry);
+    free_contact(&temp);
     return serverlist;
 }
 
-// char *send_retrieve(){
 
-// }
 
 char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char *dest_tcp){
     
@@ -1000,6 +959,7 @@ char *parseNstore(char msg_bffr[], char **node_bffr){
         }
     }
     if(msg_found == 1) return one_cmd;
+    free(one_cmd);
     return NULL;
                              
 }
