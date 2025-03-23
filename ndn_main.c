@@ -283,25 +283,27 @@ int main(int argc, char **argv){
                     
                     if(my_node->exit_flag == 1){
 
-                        leave(my_node);                                
-                        free_contact(&(my_node->extern_node));
-                        my_node->queue_ptr = clearQueue(my_node->queue_ptr);
-                        free(my_node->personal_net);
-                        free(my_node->backup_addr);
-                        free(my_node->backup_tcp);                        
-                        int i;
-                        for (i = 0; i < MAX_ENTRIES; i++) {
+                        if(leave(my_node) == 0){
 
-                            free(my_node->interest_table->entries[i]);
-                            
+                            free_contact(&(my_node->extern_node));
+                            my_node->queue_ptr = clearQueue(my_node->queue_ptr);
+                            free(my_node->personal_net);
+                            free(my_node->backup_addr);
+                            free(my_node->backup_tcp);                        
+                            int i;
+                            for (i = 0; i < MAX_ENTRIES; i++) {
+
+                                free(my_node->interest_table->entries[i]);
+                                
+                            }
+                            free(my_node->interest_table->entries);
+                            free(my_node->interest_table);
+                            free(my_node);
+                            free_contact(&node_aux);
+                            if(message != NULL) free(message);
+                            printf("Exit executed successfully\n");
+                            exit(0);
                         }
-                        free(my_node->interest_table->entries);
-                        free(my_node->interest_table);
-                        free(my_node);
-                        free_contact(&node_aux);
-                        if(message != NULL) free(message);
-                        printf("Exit executed successfully\n");
-                        exit(0);
                     }
                     
                 }
@@ -428,7 +430,10 @@ int main(int argc, char **argv){
                                         continue;
                                     }
                                     free(return_msg);
-                                    return_msg = NULL;  
+                                    return_msg = NULL; 
+                                    
+                                    printf("\nMessage sent to [%s | %s]:\n", aux->node->node_addr, aux->node->tcp_port);
+                                    printf("%s %s %s\n\n", safe_str, aux->node->node_addr, aux->node->tcp_port);
 
                                     printf("Sending %s %s %s\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
 
@@ -444,26 +449,36 @@ int main(int argc, char **argv){
                                     }
                                     free(return_msg);
                                     return_msg = NULL;
+
+                                    printf("\nMessage sent to [%s | %s]:\n", aux->node->node_addr, aux->node->tcp_port);
+                                    printf("%s %s %s\n\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
                                     
                                     backup_fail = 0;
-                                    printf("Conversion successfull\n");
+                                    printf("Waiting for response to conversion\n\n");
                                     break;
                                 }                                    
                                                                                                 
                                 // send safe to everybody else
-                               
+                                
                                 aux = my_node->internals_list;
                                 
+                                if(aux != NULL) printf("Warning other interns\n\n");
+
                                 while(aux != NULL){
                                 
                                     if(aux->node->node_fd != my_node->extern_node->node_fd){
 
-                                        return_msg = send_safe(aux->node->node_fd, my_node->backup_addr, my_node->backup_tcp);
+                                        printf("Sending %s %s %s\n", safe_str, my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
+
+                                        return_msg = send_safe(aux->node->node_fd, my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                                         if(return_msg == NULL){
                                             printf("Error in send safe: failed to send safe message to [%s | %s]\n", aux->node->node_addr, aux->node->tcp_port);
                                         }else{
                                             free(return_msg);
-                                            return_msg = NULL;                                    
+                                            return_msg = NULL;
+                                            
+                                            printf("\nMessage sent to [%s | %s]:\n", aux->node->node_addr, aux->node->tcp_port);
+                                            printf("%s %s %s\n\n", safe_str, my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                                         }
                                     }
                                     

@@ -104,7 +104,7 @@ void select_cmd(struct personal_node *personal, char *input){
 
     // parse the first string
 
-    sscanf(input, "%s %s %s", cmd_str1, cmd_str2, cmd_str3);
+    sscanf(input, "%8s %8s %8s", cmd_str1, cmd_str2, cmd_str3);
 
     // try to read and execute the desired command
 
@@ -114,7 +114,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }       
-        else if(sscanf(input, "%*s %s", net_num) == 1){
+        else if(sscanf(input, "%*s %3s", net_num) == 1){
             
             printf("Executing %s...\n\n", join_str);
             join(personal, net_num); //join a network and register the personal node in the server
@@ -132,7 +132,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }
-        else if(sscanf(input, "%*s %s %s", address, tcp) == 2){
+        else if(sscanf(input, "%*s %15s %5s", address, tcp) == 2){
             
             printf("Executing %s %s...\n\n", direct_str, join_str);
             djoin(personal, address, tcp); // join a network without registration
@@ -150,7 +150,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }
-        else if(sscanf(input, "%*s %*s %s %s", address, tcp) == 2){
+        else if(sscanf(input, "%*s %*s %15s %5s", address, tcp) == 2){
             
             printf("Executing %s %s...\n\n", direct_str, join_str);
             djoin(personal, address, tcp); // join a network without registration
@@ -164,7 +164,7 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, create_str) == 0 || strcmp(cmd_str1, create_str_short) == 0){
 
-        if(sscanf(input, "%*s %s", object_string) == 1){
+        if(sscanf(input, "%*s %100s", object_string) == 1){
             
             printf("Executing %s...\n\n", create_str);
             personal->storage_ptr = create(personal->storage_ptr, object_string); // create and store a content inside the personal node           
@@ -178,7 +178,7 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, delete_str) == 0 || strcmp(cmd_str1, delete_str_short) == 0){
 
-        if(sscanf(input, "%*s %s", object_string) == 1){
+        if(sscanf(input, "%*s %100s", object_string) == 1){
             
             printf("Executing %s...\n\n", delete_str);
             personal->storage_ptr = storageDelete(personal->storage_ptr, object_string); // delete a content inside the personal node
@@ -192,7 +192,7 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){
         
-        if(sscanf(input, "%*s %s", object_string) == 1){
+        if(sscanf(input, "%*s %100s", object_string) == 1){
             
             printf("Executing %s...\n\n", retrieve_str);
             // retrieve(personal, content); // search and copy a content from another node    
@@ -294,7 +294,8 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("The node is already without a network.\n");
             return;
         }
-        leave(personal);
+        if(leave(personal) == 0) printf("left the network successfully\n");
+        
         return;
 
     }//else if leave or l
@@ -418,7 +419,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
            
     if(check_ports(connectTCP) == 1){
         printf("Error in direct join: The boot TCP port is invalid. Command ignored\n");
-        printf("Please insert a 1 to 5 digit TCP port from 0 to 65536");        
+        printf("Please insert a 1 to 5 digit TCP port from 0 to 65536\n");        
         return ++success_flag;
     }
     
@@ -523,7 +524,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         return 1;
     }
     else{
-                
+        printf("Sending %s %s %s\n\n", entry_str, personal->personal_addr, personal->personal_tcp);       
         
         //Sends ENTRY message
         return_msg = send_entry(&(personal->extern_node->node_fd), personal->personal_addr, personal->personal_tcp, 
@@ -534,7 +535,8 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
             return 1;
         }
         
-        printf("\nENTRY message delivered to [%s | %s]\n", connectIP, connectTCP);        
+        printf("\nMessage sent to [%s | %s]\n", connectIP, connectTCP);
+        printf("%s %s %s\n\n", entry_str, personal->personal_addr, personal->personal_tcp);        
         free(return_msg);        
 
         //personal->extern_node = contact_init(personal->extern_node);                
@@ -692,7 +694,7 @@ int leave(struct personal_node *personal) {
             }
         }
         personal->network_flag = 0;
-        printf("left the network successfully\n");
+        
     }    
     personal = reset_personal(personal);
     

@@ -208,7 +208,7 @@ nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){
 
     while((one_line = strtok(NULL, delim)) != NULL){
 
-        if((sscanf(one_line, "%s %s", temp->node_addr, temp->tcp_port)) == 2){
+        if((sscanf(one_line, "%15s %5s", temp->node_addr, temp->tcp_port)) == 2){
 
             serverlist = insertnode(serverlist, temp);
             counter++;
@@ -571,7 +571,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
     nodesLinkedlist_t *aux;
 
     //get commnand
-    if (sscanf(msg, "%s", cmd) != 1) {
+    if (sscanf(msg, "%8s", cmd) != 1) {
         printf("Error in parse_tcp: Failed to read message type\n");
         return ++fail_flag;
     }
@@ -580,7 +580,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     if(strcmp(cmd, interest_msg_str) == 0){
 
-        if(sscanf(msg, "%*s %s",object_buff) == 1){
+        if(sscanf(msg, "%*s %100s",object_buff) == 1){
 
             printf("Received INTEREST: %s\n", object_buff);
             // search the object in the cache
@@ -631,7 +631,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     else if(strcmp(cmd, object_str) == 0){
 
-        if(sscanf(msg, "%*s %s", object_buff) == 1){
+        if(sscanf(msg, "%*s %100s", object_buff) == 1){
             
             printf("Received OBJECT: %s\n", object_buff);
             // check interest table to see if someone is waiting for an answer from me 
@@ -666,7 +666,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     else if(strcmp(cmd, noobject_str) == 0){
 
-        if(sscanf(msg, "%*s %s",object_buff) == 1){
+        if(sscanf(msg, "%*s %100s",object_buff) == 1){
             
             printf("Received NOOBJECT: %s\n", object_buff);
 
@@ -693,7 +693,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
        
     else if (strcmp(cmd, entry_str) == 0) {
 
-        if (sscanf(msg, "%*s %s %s", ip_cmd, tcp_cmd) == 2){
+        if (sscanf(msg, "%*s %15s %5s", ip_cmd, tcp_cmd) == 2){
             
             printf("\nMessage received from a new intern neighbor:\n");
             printf("%s\n\n", msg);
@@ -706,13 +706,13 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 strcpy(src_node->node_addr, ip_cmd);
                                                               
 
-                printf("Sending %s %s %s\n", safe_str, ip_cmd, tcp_cmd);
+                printf("Sending %s %s %s\n\n", safe_str, ip_cmd, tcp_cmd);
                 return_msg = send_safe(src_node->node_fd, ip_cmd, tcp_cmd);
                 
                 if (return_msg != NULL) {
 
                     printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
-                    printf("%s %s %s\n", safe_str, ip_cmd, tcp_cmd);
+                    printf("%s %s %s\n\n", safe_str, ip_cmd, tcp_cmd);
                     
                     free(return_msg);
                     return_msg = NULL;                        
@@ -729,7 +729,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                     return ++fail_flag;                        
                 }
 
-                printf("Sending %s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
+                printf("Sending %s %s %s\n\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                 
                 return_msg = send_entry(&(src_node->node_fd), slf_node->personal_addr, slf_node->personal_tcp,
                                         ip_cmd, tcp_cmd);
@@ -737,7 +737,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 if (return_msg != NULL) {
 
                     printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
-                    printf("%s %s %s\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
+                    printf("%s %s %s\n\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                     
                     free(return_msg);
                     return_msg = NULL;                        
@@ -763,14 +763,22 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 strcpy(src_node->tcp_port, tcp_cmd);
                 strcpy(src_node->node_addr, ip_cmd);                
 
+                // if ENTRY came from my extern, put him in the interns list
+
+                if((strcmp(slf_node->extern_node->node_addr, ip_cmd) == 0) && 
+                   (strcmp(slf_node->extern_node->tcp_port, tcp_cmd) == 0)){
+                    
+                    slf_node->internals_list = insertnode(slf_node->internals_list, slf_node->extern_node);
+                    slf_node->n_internals++;
+                }
                 
-                
-                printf("\nSending %s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                printf("\nSending %s %s %s\n\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 return_msg = send_safe(src_node->node_fd, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 
                 if (strcmp(return_msg, "1") == 0) {
                     printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
-                    printf("%s %s %s\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                    printf("%s %s %s\n\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                    
                     if (return_msg != NULL){ //reset the pointer to the received message
                         free(return_msg);
                         return_msg = NULL;
@@ -799,13 +807,13 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     else if(strcmp(cmd, safe_str) == 0){
 
-        if(sscanf(msg, "%*s %s %s",ip_cmd, tcp_cmd) == 2){
+        if(sscanf(msg, "%*s %15s %5s",ip_cmd, tcp_cmd) == 2){
 
             if(src_node->node_fd == slf_node->extern_node->node_fd){ // The message reached me through the extern node
                 
                 
                 printf("\nMessage received from [%s | %s]:\n", slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
-                printf("%s\n", msg);                
+                printf("%s\n\n", msg);                
                  
             }            
             else{
@@ -816,7 +824,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 while(aux != NULL){
                             
                     if(aux->node->node_fd == src_node->node_fd){
-                        printf("Internal node converted to external: [%s | %s]\n", aux->node->node_addr, aux->node->tcp_port);
+                        printf("Internal node converted to external: [%s | %s]\n\n", aux->node->node_addr, aux->node->tcp_port);
                         break;
                     }
                     aux = aux->next;
@@ -835,6 +843,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 (strcmp(slf_node->backup_tcp, slf_node->personal_tcp)) == 0){
 
                 slf_node->anchorflag = 1;
+                
             }
 
             printf("New backup neighbor:\n\n");                    
