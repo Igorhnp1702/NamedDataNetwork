@@ -22,15 +22,11 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/select.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <signal.h>
 
 // project libraries
 #include "ndn_commands.h"
-
-
-
+#include "ndn_messages.h"
 
 /*------------------------------------------Argument checking functions------------------------------------------*/
 
@@ -195,20 +191,26 @@ void select_cmd(struct personal_node *personal, char *input){
         if(sscanf(input, "%*s %100s", object_string) == 1){
             
             printf("Executing %s...\n\n", retrieve_str);
-            // retrieve(personal, content); // search and copy a content from another node    
+            
             // VER SE TENHO O OBJETO EM CACHE 
             // SE NAO TIVER SEND INTERST 
             // SE TIVER RETORNAR O OBJETO
             
             if (queueSearch(personal->queue_ptr, object_string)) {
-                send_object(personal->extern_node->node_fd, object_string, personal);
+                
+                printf("Object %s was found in cache\n\n", object_string);
+                return;
                              
             } 
             else if (storageSearch(personal->storage_ptr, object_string)) {
-                send_object(personal->extern_node->node_fd, object_string, personal);
+                
+                printf("Object %s was found in private storage\n\n", object_string);
+                return;
             }
             else {
-                send_interest(personal->extern_node->node_fd, object_string, personal);
+                
+                printf("Sending INTEREST message to everybody\n\n");
+                send_interest(-1, object_string, personal);
             }
             
             return; 
@@ -244,7 +246,7 @@ void select_cmd(struct personal_node *personal, char *input){
         if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
 
             printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_interest_table(personal->interest_table); // show the interest table
+            show_interest_table(personal->interests_ptr); // show the interest table
             return;
         }
         
@@ -276,7 +278,7 @@ void select_cmd(struct personal_node *personal, char *input){
         }
         else{
             printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_interest_table(personal->interest_table); // show the interest table
+            show_interest_table(personal->interests_ptr); // show the interest table
         }                        
         return;
 
@@ -531,7 +533,9 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         connectIP, connectTCP); 
         if(return_msg == NULL){
                         
-            printf("Error in direct join: Failed to join the network\n");                                    
+            printf("Error in direct join: Failed to join the network\n");
+            FD_CLR(personal->server_fd, &personal->crr_scks);
+            close(personal->server_fd);                                    
             return 1;
         }
         
@@ -561,6 +565,7 @@ storageList_t *create(storageList_t *storage_head, char *name){ // name size <= 
     }
 
     storage_head = storageInsert(storage_head, name);
+    printf("Object '%s' was created your personal storage\n\n", name);
     return storage_head;
             
 }//create
@@ -686,7 +691,7 @@ int leave(struct personal_node *personal) {
         }
         
         // close connections 
-        int i = 0;
+        int i;
         for (i = 3; i <= personal->max_fd; i++) {
             if (FD_ISSET(i, &personal->crr_scks)) {
                 FD_CLR(i, &personal->crr_scks);

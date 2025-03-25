@@ -30,9 +30,13 @@
 
 
 // project libraries
-#include "ndn_messages.h"
-#include "ndn_interestTable.h"
 #include "ndn_objectStructs.h"
+#include "ndn_interestTable.h"
+#include "ndn_node.h"
+#include "ndn_messages.h"
+
+
+
 
 
  char *node_reg(char *server_IP, char *server_UDP, char *node_IP, char *node_TCP, char *net){ // register the nod    
@@ -372,7 +376,7 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp){
 
 
 
-void send_interest(int fd, char *object_name, struct personal_node *slf_node) {
+void send_interest(int fd2avoid, char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
@@ -383,49 +387,153 @@ void send_interest(int fd, char *object_name, struct personal_node *slf_node) {
         exit(1);
     }
 
+    // Initialize variables to use for write function
     ssize_t nbytes, nleft, nwritten;
     sprintf(buffer, "%s %s\n", interest_msg_str, object_name);
     nbytes = strlen(buffer);
 
+    //Send interest to everybody, except the node with fd2avoid as the file descritpor
+
+    nodesLinkedlist_t *current;
+
+    //If fd2avoid == -1, the retrieve command was used and I dont have the object, send to everybody
+
+    if(fd2avoid == -1){
+
+        // send to the extern node
+
+        ptr = buffer;
+        nleft = nbytes;
+
+        while (nleft > 0) {
+            nwritten = write(slf_node->extern_node->node_fd, ptr, nleft);
+            if (nwritten <= 0) {
+                printf("Error in send_interest: Failed to write to socket for node [%s | %s].\n",
+                    slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                break;
+            }
+            nleft -= nwritten;
+            ptr += nwritten;
+        }
+        
+        if (nleft == 0) {
+            printf("Message sent to [%s | %s]:\n",
+                slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+            printf("%s\n\n", buffer);
+            
+            // Insert interest entry and set the interface to WAITING
+            if (!search_interest(slf_node->interests_ptr, slf_node->extern_node, object_name, WAITING)) {
+                // Add interest
+                slf_node->interests_ptr = add_interest(slf_node->interests_ptr, slf_node->extern_node, object_name, WAITING);
+            }           
+        }
     
+        // send to all other nodes
+        current = slf_node->internals_list;
+        while(current != NULL){
 
-    nodesLinkedlist_t *current = slf_node->internals_list;
-    while (current != NULL) {
-        int internal_fd = current->node->node_fd;
+            if(current->node->node_fd != slf_node->extern_node->node_fd){
 
-        // Ignore the node that sent the interest
-        if (internal_fd != fd) {
+                // this intern is different from the extern node
+
+                ptr = buffer;
+                nleft = nbytes;
+
+                while (nleft > 0) {
+                    nwritten = write(current->node->node_fd, ptr, nleft);
+                    if (nwritten <= 0) {
+                        printf("Error in send_interest: Failed to write to socket for node [%s | %s].\n",
+                            slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                        break;
+                    }
+                    nleft -= nwritten;
+                    ptr += nwritten;
+                }
+                
+                if (nleft == 0) {
+                    printf("Interest sent to [%s | %s]:\n", current->node->node_addr, current->node->tcp_port);
+                    printf("%s\n\n", buffer);
+                                            
+                    // If interest is not in the table
+                    if (!search_interest(slf_node->interests_ptr, current->node, object_name, WAITING)) {
+                        // Add interest
+                        slf_node->interests_ptr = add_interest(slf_node->interests_ptr, current->node, object_name, WAITING);
+                    }                     
+                }
+            }
+        }
+
+        // add yourself to the interest table and set yourself to ANSWER state
+
+        slf_node->interests_ptr = add_interest(slf_node->interests_ptr, NULL, object_name, ANSWER);
+    }
+    else{  // received INTEREST message from someone and I don't have the object, send INTEREST to everybody except the source
+
+        if(slf_node->extern_node->node_fd != fd2avoid){
+
+            // extern node is not source, send him and INTEREST
+
             ptr = buffer;
             nleft = nbytes;
 
-            // Send the message
             while (nleft > 0) {
-                nwritten = write(fd, ptr, nleft);
+                nwritten = write(slf_node->extern_node->node_fd, ptr, nleft);
                 if (nwritten <= 0) {
                     printf("Error in send_interest: Failed to write to socket for node [%s | %s].\n",
-                           current->node->node_addr, current->node->tcp_port);
+                        slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                     break;
                 }
                 nleft -= nwritten;
                 ptr += nwritten;
             }
-
             if (nleft == 0) {
-                printf("Interest sent to internal node [%s | %s]: %s\n",
-                       current->node->node_addr, current->node->tcp_port, object_name);
+                printf("Message sent to [%s | %s]:\n",
+                    slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                printf("%s\n\n", buffer);
                 
-                // If interest is not in the table
-                if (!search_interest(slf_node->interest_table, object_name)) {
+                // Insert interest entry and set the interface to ANSWER, if it's not done already
+                if (!search_interest(slf_node->interests_ptr, slf_node->extern_node, object_name, WAITING)) {
                     // Add interest
-                    add_interest(slf_node->interest_table, object_name, WAITING);
-                }
-                // Set interface to WAITING
-                update_interface_state(slf_node->interest_table, object_name, internal_fd, WAITING);
-
+                    slf_node->interests_ptr = add_interest(slf_node->interests_ptr, slf_node->extern_node, object_name, WAITING);
+                }           
             }
-        }
 
-        current = current->next;
+        }
+        current = slf_node->internals_list;
+        while (current != NULL) {             
+
+            // Ignore the node that sent the interest and don't send to extern twice
+
+            if ((current->node->node_fd != fd2avoid) && (current->node->node_fd != slf_node->extern_node->node_fd)) {
+                ptr = buffer;
+                nleft = nbytes;
+
+                // Send the message
+                while (nleft > 0) {
+                    nwritten = write(current->node->node_fd, ptr, nleft);
+                    if (nwritten <= 0) {
+                        printf("Error in send_interest: Failed to write to socket for node [%s | %s].\n",
+                                current->node->node_addr, current->node->tcp_port);
+                        break;
+                    }
+                    nleft -= nwritten;
+                    ptr += nwritten;
+                }
+
+                if (nleft == 0) {
+                    printf("Interest sent to internal node [%s | %s]: %s\n",
+                            current->node->node_addr, current->node->tcp_port, object_name);
+                    
+                    // Insert interest entry and set the interface to ANSWER, if it's not done already
+                    if (!search_interest(slf_node->interests_ptr, current->node, object_name, WAITING)) {
+                        // Add interest
+                        slf_node->interests_ptr = add_interest(slf_node->interests_ptr, current->node, object_name, WAITING);
+                    }                    
+
+                }
+            }
+            current = current->next;
+        }
     }
 
     free(buffer);
@@ -434,115 +542,277 @@ void send_interest(int fd, char *object_name, struct personal_node *slf_node) {
     return;
 }
 
-char *send_object(int fd, char *object_name, struct personal_node *slf_node) {
+void send_object(char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
+    InterestEntry *aux = slf_node->interests_ptr, *aux2del, *prev;
+    ssize_t nbytes, nleft, nwritten;
+    int extern_flag = 0, writefail = 0;
 
     // Allocate Buffer's Memory
     if ((buffer = (char *)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL) {
         printf("Error in send_object: Failed to allocate memory. Process terminated.\n");
         exit(1);
     }
-
-    ssize_t nbytes, nleft, nwritten;
-    
-    sprintf(buffer, "%s %s\n", object_str, object_name);
-    ptr = buffer;
+        
+    sprintf(buffer, "%s %s\n", object_str, object_name);    
     nbytes = strlen(buffer);
-    nleft = nbytes;
 
-    // Send the message
-    while (nleft > 0) {
-        nwritten = write(fd, ptr, nleft);
-        if (nwritten <= 0) {
-            printf("Send Object: Error in write\n");
-            free(buffer);
-            return NULL;
-        }
-        nleft -= nwritten;
-        ptr += nwritten;
+    if(slf_node->interests_ptr == NULL){
+
+        printf("Error in send_object: The interest table is empty, no one wants an answer for this object\n");
+        return;
+    }
+    
+    int counter = 2; // number of matches for the head
+                
+    if(strcmp(aux->name, object_name) != 0){
+
+        //head has different name
+        counter --;
+    }
+    if(aux->current_state != ANSWER){
+
+        //head has different state
+        counter --;
     }
 
-    update_interface_state(slf_node->interest_table, object_name, fd, ANSWER);
-    
+    if(counter == 2){
 
-    return buffer; // returning what was inside the file descriptor
+        // send object to the head and remove it from the interest table
+
+        nleft = nbytes;
+        ptr = buffer;
+
+        //To avoid sending this message twice to the extern node
+        if(aux->interface_fd == slf_node->extern_node->node_fd) extern_flag++;
+
+        // Send the message
+        while (nleft > 0) {
+            nwritten = write(aux->interface_fd, ptr, nleft);
+            if (nwritten <= 0) {
+                printf("Error in send_object: Failed to write to file descriptor: %s\n", strerror(errno));
+                writefail = 1;
+                break;
+            }
+            nleft -= nwritten;
+            ptr += nwritten;
+        }
+        if(writefail == 0){
+            printf("Message sent to [%s | %s]:\n", aux->interface_addr, aux->interface_tcp);
+            printf("%s\n\n", buffer);
+        }
+        writefail = 0;
+
+        printf("The following interest entry will be removed:\n\n");
+        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
+        printf("Object in question: %s\n", aux->name);
+        printf("Current state: %s\n\n", aux->state_str);
+        aux2del = aux;
+        aux = aux->next;
+        free_interest(&aux2del);        
+    }
+
+    while(aux != NULL){
+                                         
+        if(strcmp(aux->name, object_name) != 0){
+
+            //different name, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+        if(aux->current_state != ANSWER){
+
+            //different state, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+        if((aux->interface_fd == slf_node->extern_node->node_fd) && (extern_flag = 1)){
+
+            //Do not send this message twice, skip to next interest entry
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+
+        nleft = nbytes;
+        ptr = buffer;
+
+        // Send the message
+        while (nleft > 0) {
+            nwritten = write(aux->interface_fd, ptr, nleft);
+            if (nwritten <= 0) {
+                printf("Error in send_object: Failed to write to file descriptor: %s\n", strerror(errno));
+                writefail = 1;
+                break;
+            }
+            nleft -= nwritten;
+            ptr += nwritten;
+        }
+
+        if(writefail == 0){
+            printf("Message sent to [%s | %s]:\n", aux->interface_addr, aux->interface_tcp);
+            printf("%s\n\n", buffer);
+        }
+        writefail = 0;
+        
+        //To avoid sending this message twice to the extern node
+        if(aux->interface_fd == slf_node->extern_node->node_fd) extern_flag++;
+
+        printf("The following interest entry will be removed:\n\n");
+        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
+        printf("Object in question: %s\n", aux->name);
+        printf("Current state: %s\n\n", aux->state_str);
+        aux2del = aux;
+        prev->next = aux->next;
+        aux = aux->next;
+        free_interest(&aux2del);
+                
+    }
+    free(buffer);
+               
+    return;
 }
 
-char *send_noobject(int fd, char *object_name, struct personal_node *slf_node) {
+void send_noobject(char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
+    InterestEntry *aux = slf_node->interests_ptr, *aux2del, *prev;
+    ssize_t nbytes, nleft, nwritten;
+    int extern_flag = 0, writefail = 0;
 
     // Allocate Buffer's Memory
     if ((buffer = (char *)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL) {
-        printf("Error in send_noobject: Failed to allocate memory. Process terminated.\n");
+        printf("Error in send_object: Failed to allocate memory. Process terminated.\n");
         exit(1);
     }
-
-    ssize_t nbytes, nleft, nwritten;
-    
-    sprintf(buffer, "%s %s\n", noobject_str, object_name);
-    ptr = buffer;
+        
+    sprintf(buffer, "%s %s\n", noobject_str, object_name);    
     nbytes = strlen(buffer);
-    nleft = nbytes;
 
-    // Send the message
-    while (nleft > 0) {
-        nwritten = write(fd, ptr, nleft);
-        if (nwritten <= 0) {
-            printf("Send Object: Error in write\n");
-            free(buffer);
-            return NULL;
-        }
-        nleft -= nwritten;
-        ptr += nwritten;
+    if(slf_node->interests_ptr == NULL){
+
+        printf("Error in send_noobject: The interest table is empty, no one wants an answer for this object\n");
+        return ;
+    }
+    
+    int counter = 2; // number of matches for the head
+                
+    if(strcmp(aux->name, object_name) != 0){
+
+        //head has different name
+        counter --;
+    }
+    if(aux->current_state != ANSWER){
+
+        //head has different state
+        counter --;
     }
 
-    // Close the interface that is sending the NOOBJECT message
-    update_interface_state(slf_node->interest_table, object_name, fd, CLOSED);
-    
-    // Close all interfaces that are waiting for the object
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        if (slf_node->interest_table->entries[i]->active &&
-            strcmp(slf_node->interest_table->entries[i]->name, object_name) == 0) {
-            for (int j = 0; j < MAX_INTERFACES; j++) {
+    if(counter == 2){
 
-                // Check if the interface is waiting for the object
-                if (slf_node->interest_table->entries[i]->interfaces[j] == WAITING) {
+        // send object to the head and remove it from the interest table
 
-                    // Send NOOBJECT to the interface
-                    ptr = buffer;
-                    nleft = nbytes;
+        nleft = nbytes;
+        ptr = buffer;
 
-                    while (nleft > 0) {
-                        nwritten = write(j, ptr, nleft);
-                        if (nwritten <= 0) {
-                            printf("Error in send_noobject: Failed to forward NOOBJECT to interface [%d].\n", j);
-                            break;
-                        }
-                        nleft -= nwritten;
-                        ptr += nwritten;
-                    }
-                    // Set the interface to CLOSED
-                    update_interface_state(slf_node->interest_table, object_name, j, CLOSED);
-                }
+        //To avoid sending this message twice to the extern node
+        if(aux->interface_fd == slf_node->extern_node->node_fd) extern_flag++;
+
+        // Send the message
+        while (nleft > 0) {
+            nwritten = write(aux->interface_fd, ptr, nleft);
+            if (nwritten <= 0) {
+                printf("Error in send_noobject: Failed to write to file descriptor: %s\n", strerror(errno));
+                writefail = 1;
+                break;
             }
-            break; // Found the entry, no need to continue
+            nleft -= nwritten;
+            ptr += nwritten;
         }
+        if(writefail == 0){
+            printf("Message sent to [%s | %s]:\n", aux->interface_addr, aux->interface_tcp);
+            printf("%s\n\n", buffer);
+        }
+        writefail = 0;
+
+        printf("The following interest entry will be removed:\n\n");
+        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
+        printf("Object in question: %s\n", aux->name);
+        printf("Current state: %s\n\n", aux->state_str);
+        aux2del = aux;
+        aux = aux->next;
+        free_interest(&aux2del);        
     }
-    
-    
-    memset(buffer, 0, MAX_MSG_LENGTH * sizeof(char)); //set the buffer to '\0' //!lembrar
-    strcpy(buffer, "1"); //indicates that the message was sent
 
-    return buffer; // returning what was inside the file descriptor
+    while(aux != NULL){
+                                         
+        if(strcmp(aux->name, object_name) != 0){
+
+            //different name, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+        if(aux->current_state != ANSWER){
+
+            //different state, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+        if((aux->interface_fd == slf_node->extern_node->node_fd) && (extern_flag = 1)){
+
+            //Do not send this message twice, skip to next interest entry
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+
+        nleft = nbytes;
+        ptr = buffer;
+
+        // Send the message
+        while (nleft > 0) {
+            nwritten = write(aux->interface_fd, ptr, nleft);
+            if (nwritten <= 0) {
+                printf("Error in send_object: Failed to write to file descriptor: %s\n", strerror(errno));
+                writefail = 1;
+                break;
+            }
+            nleft -= nwritten;
+            ptr += nwritten;
+        }
+
+        if(writefail == 0){
+            printf("Message sent to [%s | %s]:\n", aux->interface_addr, aux->interface_tcp);
+            printf("%s\n\n", buffer);
+        }
+        writefail = 0;
+        
+        //To avoid sending this message twice to the extern node
+        if(aux->interface_fd == slf_node->extern_node->node_fd) extern_flag++;
+
+        printf("The following interest entry will be removed:\n\n");
+        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
+        printf("Object in question: %s\n", aux->name);
+        printf("Current state: %s\n\n", aux->state_str);
+        aux2del = aux;
+        prev->next = aux->next;
+        aux = aux->next;
+        free_interest(&aux2del);
+                
+    }
+    free(buffer);
 }
-
-
-
-
 
 int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
@@ -582,43 +852,57 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
         if(sscanf(msg, "%*s %100s",object_buff) == 1){
 
-            printf("Received INTEREST: %s\n", object_buff);
-            // search the object in the cache
-            if (queueSearch(slf_node->queue_ptr, object_buff)) {
-                // object in cache, send object message
-                return_msg = send_object(src_node->node_fd, object_buff, slf_node);
-                if (return_msg != NULL) {
-                    free(return_msg);
-                    return_msg = NULL;
-                }
+            printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port); 
+            printf("%s\n\n", msg);
+
+            // search the cache and the storage
+
+            if (queueSearch(slf_node->queue_ptr, object_buff) || storageSearch(slf_node->storage_ptr, object_buff)) {
+            
+                // We have the object, create the interest entry             
+
+                slf_node->interests_ptr = add_interest(slf_node->interests_ptr, src_node, object_buff, ANSWER);
+
+                // send OBJECT message
+                
+                send_object(object_buff, slf_node);
+
             } else {
 
-                // object not in cache...
+                // We don't have the object...
+
                 if (has_neighbors(slf_node->internals_list)) {
-                    // ...and you have other neighbors
-                    if (!search_interest(slf_node->interest_table, object_buff)) {
+                    
+                    // ...and you have intern neighbors
+
+                    if(search_interest(slf_node->interests_ptr, src_node, object_buff, ANSWER)){
+
+                        //avoid duplicate interest entry
+
+                    }
+
+                    else if(!search_interest(slf_node->interests_ptr, src_node, object_buff, WAITING) && 
+                        !search_interest(slf_node->interests_ptr, NULL, object_buff, WAITING)) {
+                        
                         // ...and not in interest table
-                        add_interest(slf_node->interest_table, object_buff, WAITING);
+
+                        // we made sure that the interest entry is not repeated and that no one is
+                        // waiting for the object
+                        slf_node->interests_ptr = add_interest(slf_node->interests_ptr, src_node, object_buff, ANSWER);
                         // send interest message to neighbors
                         send_interest(src_node->node_fd, object_buff, slf_node);
                     }
                     else {
                         // Interest already in the table
-                        // Update a interface para ANSWER
+                        // Add the interface and set it to ANSWER
                         // so that we know that we have to send the object through this interface
-                        int waiting_interface = search_waiting_interface(slf_node->interest_table, object_buff);
-                        if (waiting_interface != -1) {
-                            update_interface_state(slf_node->interest_table, object_buff, waiting_interface, ANSWER);
-                        }
+
+                        slf_node->interests_ptr = add_interest(slf_node->interests_ptr, src_node, object_buff, ANSWER);
                     }
                 
                 } else {
-                    // ...and you have no other neighbors, send noobject message to the source
-                    return_msg = send_noobject(src_node->node_fd, object_buff, slf_node);
-                    if (return_msg != NULL) {
-                        free(return_msg);
-                        return_msg = NULL;
-                    }
+                    // ...and you have no other neighbors, send noobject message to the extern node
+                    send_noobject(object_buff, slf_node);                   
                 }
             }
         }else{
@@ -633,29 +917,37 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
         if(sscanf(msg, "%*s %100s", object_buff) == 1){
             
-            printf("Received OBJECT: %s\n", object_buff);
-            // check interest table to see if someone is waiting for an answer from me 
-            int waiting_interface = search_waiting_interface(slf_node->interest_table, object_buff);
-            if (waiting_interface != -1) {
-                // if someone is waiting for the object
-                // send object message to that node
-                return_msg = send_object(waiting_interface, object_buff, slf_node);
-                if (return_msg != NULL) {
-                    free(return_msg);
-                    return_msg = NULL;
-                }
+            printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port);
+            printf("%s\n\n", object_buff);
+            // check interest table to see if I have to answer someone             
 
+            if(search_interest(slf_node->interests_ptr, NULL, object_buff, ANSWER) == 1){                                                    
+
+                send_object(object_buff, slf_node);                                                       
+
+                // Delete the old object in cache to make sure you have space for new object
+
+                if(slf_node->queue_ptr->object_counter == slf_node->queue_ptr->queue_limit){
+
+                    slf_node->queue_ptr = deleteOld(slf_node->queue_ptr);
+                }
+                
                 // and place the object in cache
-                insertNew(slf_node->queue_ptr, object_buff);
+                slf_node->queue_ptr = insertNew(slf_node->queue_ptr, object_buff);
 
                 // remove interest from table
-                remove_interest(slf_node->interest_table, object_buff);
+                slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff);
             }
             else {
                 // if no one is waiting for the object
                 // place the object in cache
-                insertNew(slf_node->queue_ptr, object_buff);
-                //ou printf("No interfaces waiting for OBJECT: %s\n", object_buff);
+
+                if(slf_node->queue_ptr->object_counter == slf_node->queue_ptr->queue_limit){
+
+                    slf_node->queue_ptr = deleteOld(slf_node->queue_ptr);
+                }
+                slf_node->queue_ptr = insertNew(slf_node->queue_ptr, object_buff);
+                printf("No interfaces waiting for 'OBJECT %s'\n", object_buff);
             }
         }
         else{
@@ -671,16 +963,15 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             printf("Received NOOBJECT: %s\n", object_buff);
 
             // Send NOOBJECT to all interfaces that are waiting for the object
-            return_msg = send_noobject(src_node->node_fd, object_buff, slf_node);
-            if (return_msg != NULL) {
-                free(return_msg);
-                return_msg = NULL;
-            }
+            send_noobject(object_buff, slf_node);
+           
 
             // check if all interfaces are closed
-            if (all_interfaces_closed(slf_node->interest_table, object_buff)) {
+
+            if (!search_interest(slf_node->interests_ptr, NULL, object_buff, WAITING)){
+                // all interfaces for object_buff are closed
                 // remove interest from table
-                remove_interest(slf_node->interest_table, object_buff);
+                slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff);
             }
         }
     

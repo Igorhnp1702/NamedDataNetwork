@@ -9,26 +9,16 @@
  * Description: source code for the object queue
  ***********************************************************************************************/
 
-#define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
-
- // general purpose libraries
+// general purpose libraries
 #include <stdlib.h>
 #include <string.h>
-
-
-// networking libraries
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <signal.h>
+#include <unistd.h>
+#include <stdio.h>
 
 // project libraries
 #include "ndn_commands.h"
-#include "ndn_messages.h"
-#include "ndn_node.h"
 #include "ndn_objectStructs.h"
+#include "ndn_messages.h"
 
 objectQueue_t *queueInit(objectQueue_t *queue_ptr, int limit){
 
@@ -102,7 +92,7 @@ objectQueue_t *deleteOld(objectQueue_t *queue_ptr){
 int queueSearch(objectQueue_t *queue_ptr, char *string){
 
     if((queue_ptr->tail == NULL) && (queue_ptr->head == NULL)){
-        printf("Failed to find %s in cache because it's empty\n", string);
+        printf("Failed to find %s in cache because it's empty\n\n", string);
         return 0;
     }
 
@@ -112,12 +102,12 @@ int queueSearch(objectQueue_t *queue_ptr, char *string){
 
         if((strcmp(aux->name, string)) == 0){
 
-            printf("%s was found in cache\n", string);
+            printf("%s was found in cache\n\n", string);
             return 1;
         }
         aux = aux->next;
     }
-    printf("Failed to find %s in cache\n", string);
+    printf("Failed to find %s in cache\n\n", string);
     return 0;
 }
 
@@ -266,6 +256,7 @@ storageList_t *storageDelete(storageList_t *head, char *object){
         head = head->next;
         free(aux_del->object);
         free(aux);
+        printf("Object '%s' was deleted from your personal storage\n\n", object);
         return head;
     }
 
@@ -277,6 +268,7 @@ storageList_t *storageDelete(storageList_t *head, char *object){
             aux->next = aux->next->next;
             free(aux_del->object);
             free(aux);
+            printf("Object '%s' was deleted from your personal storage\n\n", object);
             return head;
         }
     }
@@ -287,7 +279,7 @@ storageList_t *storageDelete(storageList_t *head, char *object){
 int storageSearch(storageList_t *head, char *object){
 
     if(head == NULL){
-        printf("Object storage is empty\n");
+        printf("Object storage is empty\n\n");
         return 0;
     }
     storageList_t *aux = head;
@@ -295,12 +287,12 @@ int storageSearch(storageList_t *head, char *object){
     while(aux != NULL){
 
         if((strcmp(aux->object, object)) == 0){
-            printf("%s was found in the object storage\n", object);
+            printf("%s was found in the object storage\n\n", object);
             return 1;
         }
         aux = aux->next;
     }
-    printf("Failed to find %s in the object storage\n", object);
+    printf("Failed to find %s in the object storage\n\n", object);
     return 0;
 
 }

@@ -14,24 +14,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
-#include <sys/types.h>
-#include <errno.h>
-
-// networking libraries
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/select.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <signal.h>
 
 // project libraries
 #include "ndn_node.h"
 #include "ndn_messages.h"
-
-
-
 
 nodeinfo_t *contact_init(nodeinfo_t *contact){
     
@@ -58,9 +44,7 @@ nodeinfo_t *contact_init(nodeinfo_t *contact){
     }
     
     contact->node_fd = -1;
-    contact->entry_flag = 0;
-    contact->safe_flag = 0;
-    contact->msg_object_flag = 0;
+    
     
     return contact;
 }//contact_init()
@@ -112,8 +96,8 @@ struct personal_node *personal_init(struct personal_node *personal){
     //init neighbors list
     personal->internals_list = NULL;
     personal->internals_list = Listinit(personal->internals_list);
-    personal->interest_table = NULL;
-    personal->interest_table = init_interest_table(personal->interest_table);
+    personal->interests_ptr = NULL;
+    personal->interests_ptr = init_interest_table(personal->interests_ptr);
     
     return personal;
 }//personal_init()
@@ -134,11 +118,8 @@ void reset_contact(nodeinfo_t **contact){
     memset((*contact)->tcp_port, 0, MAX_TCP_UDP_CHARS);
     memset((*contact)->node_buff, 0, MAX_MSG_LENGTH);
     (*contact)->node_fd = -1;
-    (*contact)->entry_flag = 0;
-    (*contact)->safe_flag = 0;
-    (*contact)->msg_object_flag = 0;
+    
     return;
-
 }
 
 
@@ -148,7 +129,7 @@ struct personal_node *reset_personal(struct personal_node *personal){
     personal->queue_ptr = clearQueue(personal->queue_ptr);
     personal->queue_ptr = queueInit(personal->queue_ptr, personal->cache_limit);
     personal->storage_ptr = storageClear(personal->storage_ptr);
-    clear_interest_table(&personal->interest_table);
+    personal->interests_ptr = clear_interest_table(personal->interests_ptr);
 
     /*clear extern and backup nodes*/
     if (personal->extern_node != NULL){        
@@ -182,9 +163,6 @@ void contact_copy(nodeinfo_t *dest, nodeinfo_t *src) {
     strcpy(dest->node_buff, src->node_buff);
 
     dest->node_fd = src->node_fd;
-    dest->entry_flag = src->entry_flag;
-    dest->safe_flag = src->safe_flag;
-    dest->msg_object_flag = src->msg_object_flag;
     
 
     return;

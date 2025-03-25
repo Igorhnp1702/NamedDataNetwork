@@ -12,9 +12,8 @@
 #ifndef ndn_node_header
 #define ndn_node_header
 
-
-#include "ndn_interestTable.h"
 #include "ndn_objectStructs.h"
+#include <sys/select.h>
 
 /**************************************************************************
  * nodeinfo_t
@@ -32,48 +31,21 @@
  *  -node_buff = buffer to store unfinished mesages
  ***************************************************************************/
 typedef struct any_node{
+
 char *tcp_port;  // tcp port of the node; integer from 0 to 65 536   
 char *node_addr; // IPv4 address with undefined size
 char *node_buff; // buffer to store unfinished mesages
 int  node_fd;   // the file descriptor assigned to this node
-int  safe_flag;
-int  entry_flag;
-int  msg_object_flag;
 
 } nodeinfo_t;
 
+#include "ndn_interestTable.h"
 
 typedef struct nodesLinkedlist_t{
     nodeinfo_t *node;
     struct nodesLinkedlist_t *next;
 } nodesLinkedlist_t;
 
-
-/*****************************************************************************
- * personal_node
- *
- *  Description:
- *
- *  -Structure of data that will hold all variables regarding the personal node;
- *
- *  Members of the struct:
- *
- *  -persn_info  = contact of the personal node;
- *  -anchorflag  = flag that indicates if the node is an anchor or not
- *  -n_internals = counter for the number of internal neighbors;
- *  -udp_fd      = file descriptor to communicate with the node server
- *  -max_fd      = the maximum integer assigned to a file descriptor in this node's FD set
- *  -client_fd   = file descriptor to communicate with the extern node
- *  -udp_port    = UDP port of the server of nodes
- *  -udp_address = UDP address of the server of nodes
- *  -rdy_scks    = set of file descriptors to read from
- *  -crr_scks    = set of file descriptors to read from
- *  -queue_ptr   = ptr for the object queue
- *  -extern_node = contact of the extern neighbor node
- *  -backup_node = contact of the backup neighbor node
- *  -neighbrs    = array of contacts of intern neighbors. 
- *                 The indexes match the nodes's ids
- ****************************************************************************/
 struct personal_node{
 
 int anchorflag;                     // flag that says whether the node is an anchor or not (anchor = backup to itself)
@@ -95,7 +67,7 @@ fd_set rdy_scks;                    // set of file descriptors with activity to 
 fd_set crr_scks;                    // set of file descriptors in use (crr = current)
 storageList_t * storage_ptr;
 objectQueue_t *queue_ptr;           // double linked list of the contents of the node
-InterestTable *interest_table;      // table of interests
+InterestEntry *interests_ptr;      // table of interests
 nodeinfo_t *extern_node;            // contact of the extern neighbor node
 nodesLinkedlist_t *internals_list; // list of contacts of internal neighbors
 };

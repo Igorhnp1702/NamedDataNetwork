@@ -9,8 +9,8 @@
  * Description: header file for the object queue
  ***************************************************************************/
 
- #ifndef ndn_objectStructs_header
- #define ndn_objectStructs_header
+#ifndef ndn_objectStructs_header
+#define ndn_objectStructs_header
 
 /**************************************************************************
  * typedef struct queueBlock_t

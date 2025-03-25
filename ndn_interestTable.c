@@ -9,179 +9,408 @@
  * Description: source code for the interest Table
  ***********************************************************************************************/
 
-#include "ndn_interestTable.h"
+// general purpose libraries
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
+// project libraries
+#include "ndn_interestTable.h"
+#include "ndn_messages.h"
+#include "ndn_node.h"
 
 // Initialize the interest table
-InterestTable *init_interest_table(InterestTable *table) {   
+InterestEntry *init_interest_table(InterestEntry *head) {   
     
-    int i, j;
-
-    if((table = (InterestTable*)calloc(MAX_ENTRIES, sizeof(InterestTable))) == NULL){
-
-        printf("Error in init_interest_table: Failed to allocate memory. Process terminated\n");
-        exit(1);
-    }
+    head = NULL;
+    return head;
     
-    if((table->entries = (InterestEntry**)calloc(MAX_ENTRIES, sizeof(InterestEntry*))) == NULL){
-
-        printf("Error in init_interest_table: Failed to allocate memory. Process terminated\n");
-        exit(1);
-    }
-    for (i = 0; i < MAX_ENTRIES; i++) {
-
-        if((table->entries[i] = (InterestEntry*)calloc(1, sizeof(InterestEntry))) == NULL){
-
-            printf("Error in init_interest_table: Failed to allocate memory. Process terminated\n");
-            exit(1);
-        }
-        table->entries[i]->active = 0;                       // There are no active entries
-        memset(table->entries[i]->name, 0, MAX_NAME_LENGTH);
-        for (j = 0; j < MAX_INTERFACES; j++) {
-            table->entries[i]->interfaces[j] = CLOSED;       // All interfaces are closed
-        }
-    }
-    return table;
 }
 
 // Add an interest to the table
-int add_interest(InterestTable *table, char *name, InterfaceState initial_state) {
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        if (!table->entries[i]->active) {                                // If the entry is not active
-            strncpy(table->entries[i]->name, name, MAX_NAME_LENGTH - 1); // Add Object name
-            for (int j = 0; j < MAX_INTERFACES; j++) {
-                table->entries[i]->interfaces[j] = initial_state;        // Define the initial state for all interfaces
-            }
-            table->entries[i]->active = 1;
-            return 0;
-        }
+InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *name, InterfaceState initial_state) {
+    
+    InterestEntry *new_entry = NULL, *aux;    
+
+    if((new_entry = (InterestEntry*)calloc(1, sizeof(InterestEntry))) == NULL){
+
+        printf("Error in add_interest: Failed to allocate memory. Process terminated");
+        exit(1);
     }
-    return -1; // Interest table is full
+    new_entry->current_state = initial_state;
+    
+    if(initial_state == ANSWER) new_entry->state_str = ANSWER_STR;
+    else if(initial_state == WAITING) new_entry->state_str = WAITING_STR;
+    else if(initial_state == CLOSED) new_entry->state_str = CLOSED_STR;
+    
+    else{
+
+        printf("Invalid interface state. The interest was not added");
+        free(new_entry);
+        return head;
+    }
+
+    new_entry->interface_addr = NULL;
+    if((new_entry->interface_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char))) == NULL){
+
+        printf("Error in add_interest: Failed to allocate memory. Process terminated");
+        exit(1);
+    }
+
+    new_entry->interface_tcp = NULL;
+    if((new_entry->interface_tcp = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char))) == NULL){
+
+        printf("Error in add_interest: Failed to allocate memory. Process terminated");
+        exit(1);
+    }
+
+    new_entry->name = NULL;
+    if((new_entry->name = (char*)calloc(MAX_NAME_LENGTH, sizeof(char))) == NULL){
+
+        printf("Error in add_interest: Failed to allocate memory. Process terminated");
+        exit(1);
+    }
+    strcpy(new_entry->name, name);
+
+    new_entry->next = NULL;
+
+    if(src_node == NULL){ // it's me, MARIO
+
+
+    } 
+
+    
+
+    new_entry->interface_fd = src_node->node_fd;
+    
+
+     
+
+    
+    strcpy(new_entry->interface_addr, src_node->node_addr);
+
+
+    
+    strcpy(new_entry->interface_tcp, src_node->tcp_port);
+    
+
+    
+
+    if(head == NULL){
+
+        head = new_entry;
+
+        printf("New entry in the interest table:\n\n");        
+        printf("Interface: [%s | %s]\n", new_entry->interface_addr, new_entry->interface_tcp);
+        printf("Object in question: %s\n", name);
+        printf("State: %s\n\n", new_entry->state_str);
+        return head;
+    }
+    
+    // insert interest entry at the end of the list
+
+    aux = head;
+
+    while (aux != NULL) aux = aux->next;
+    
+    aux = new_entry;
+
+    printf("New entry in the interest table:\n\n");    
+    printf("Interface: [%s | %s]\n", new_entry->interface_addr, new_entry->interface_tcp);
+    printf("Object in question: %s\n", name);
+    printf("Current state: %s\n\n", new_entry->state_str);
+    return head;    
 }
 
-// Delete an interest from the table
-int remove_interest(InterestTable *table, char *name) {
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        // If the entry is active and the object name matches,
-        // we found the interest to remove
-        if (table->entries[i]->active && strcmp(table->entries[i]->name, name) == 0) {
-            table->entries[i]->active = 0;   // Set the entry as inactive
-            memset(table->entries[i]->name, 0, MAX_NAME_LENGTH); // Clear the object name
-            for (int j = 0; j < MAX_INTERFACES; j++) {
-                table->entries[i]->interfaces[j] = CLOSED; // Close all interfaces
-            }
-            return 0;
-        }
+void free_interest(InterestEntry **interest_block){
+
+    free((*interest_block)->interface_addr);
+    free((*interest_block)->interface_tcp);
+    free((*interest_block)->name);
+    free((*interest_block));
+}
+
+InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state){
+
+    if(head == NULL){
+
+        printf("Error in RemoveSingleInterest: There are no interests to remove\n");
+        return head;
     }
-    return -1; // Interest not found
+
+    InterestEntry *aux = head, *aux2del, *prev;
+    int counter = 4; // number of matches for the head
+
+    if(strcmp(aux->interface_addr, target_node->node_addr) != 0){
+
+        //head has different address
+        counter --;
+    }
+    if(strcmp(aux->interface_tcp, target_node->tcp_port) != 0){
+
+        //head has different port
+        counter --;
+    }            
+    
+    if(strcmp(aux->name, name2del) != 0){
+
+        //head has different name
+        counter --;
+    }
+    if(aux->current_state != target_state){
+
+        //head has different state
+        counter --;
+    }
+
+    if(counter == 4){
+
+        // the head will be removed and NULL will be returned
+        printf("The following interest entry will be removed:\n\n");
+        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
+        printf("Object in question: %s\n", aux->name);
+        printf("Current state: %s\n\n", aux->state_str);
+        aux2del = aux;
+        aux = aux->next;
+        free_interest(&aux2del);
+        return head;
+    }
+
+    while(aux != NULL){
+        
+        
+        if(strcmp(aux->interface_addr, target_node->node_addr) != 0){
+
+            //different address, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+        if(strcmp(aux->interface_tcp, target_node->tcp_port) != 0){
+
+            //different port, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }            
+        
+        if(strcmp(aux->name, name2del) != 0){
+
+            //different name, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+        if(aux->current_state != target_state){
+
+            //different state, see next entry
+            
+            prev = aux;
+            aux = aux->next;
+            continue;
+        }
+        
+        printf("The following interest entry will be removed:\n\n");
+        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
+        printf("Object in question: %s\n", aux->name);
+        printf("Current state: %s\n\n", aux->state_str);
+        aux2del = aux;
+        prev->next = aux->next;                
+        free_interest(&aux2del);
+        return head;
+        
+    }
+    
+    printf("Error in RemoveSingleInterest: Failed to remove desired interest entry\n");
+    return head;
+}
+
+// Delete all interests associated with 'name2del'
+ InterestEntry *remove_interests(InterestEntry *head, char *name2del) {
+    
+    // check if the list is empty
+
+    if(head == NULL){
+
+        printf("Error in remove interest: There are no interests to remove\n");
+        return head;
+    }
+
+    InterestEntry *aux, *aux2del;
+        
+    aux = head;
+    while(aux != NULL){
+
+        if(strcmp(aux->name, name2del) == 0){
+
+            aux2del = aux;
+            aux = aux->next;
+            free_interest(&aux2del);
+
+        }else aux = aux->next;
+
+    }
+    return head;
 }
 
 // Update the state of an interface for a given interest
-void update_interface_state(InterestTable *table, char *name, int interface_index, InterfaceState state) {
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        // Find the interest entry with the given object name
-        if (table->entries[i]->active && strcmp(table->entries[i]->name, name) == 0) {
-            if (interface_index >= 0 && interface_index < MAX_INTERFACES) {
-                table->entries[i]->interfaces[interface_index] = state;
-            }
-            return;
-        }
+InterestEntry *update_interface_state(InterestEntry *head, int src_fd ,char *name, InterfaceState new_state) {
+    
+    if(new_state != ANSWER || new_state != CLOSED || new_state != WAITING){
+       
+        printf("Error in update_interface_state: Invalid state was passed.\n");
+        printf("Update canceled\n\n");
+        return head;
     }
+    
+    // check if the list is empty
+
+    if(head == NULL){
+
+        printf("Error in update_interface_state: There are no interfaces to update\n");
+        return head;
+    }
+
+    InterestEntry *aux = head;
+
+    while(aux != head){
+
+        if(aux->interface_fd != src_fd){ 
+
+            // aux does not match the interface I want, continue searching
+            aux = aux->next;
+            continue;
+        }
+
+        if(strcmp(aux->name, name) != 0){
+
+            // aux has the interface but not the name I want, continue
+            aux = aux->next;
+            continue;
+        }
+
+        // Has the interface and the name, hopefully not duplicated
+
+        printf("Change in the interest table\n\n");
+        printf("Previous state of interface [%s | %s] for object '%s': %s\n\n", aux->interface_addr, aux->interface_tcp, name, aux->state_str);
+
+        aux->current_state = new_state;
+
+        if(new_state == ANSWER) aux->state_str = ANSWER_STR;
+        if(new_state == WAITING) aux->state_str = WAITING_STR;
+        if(new_state == CLOSED) aux->state_str = CLOSED_STR;
+                
+        printf("Updated state of interface [%s | %s] for object '%s': %s\n\n", aux->interface_addr, aux->interface_tcp, name, aux->state_str);
+        
+        return head;
+        
+    }
+
+    printf("Error in update_interface_state: target interface was not found\n");
+    return head;
 }
 
 // Delete all entries
-void clear_interest_table(InterestTable **table) {
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        (*table)->entries[i]->active = 0;  // Set the entry as inactive
-        memset((*table)->entries[i]->name, 0, MAX_NAME_LENGTH);
-        for (int j = 0; j < MAX_INTERFACES; j++) {
-            (*table)->entries[i]->interfaces[j] = CLOSED;  // Close all interfaces
-        }
-    }
-}
-
-// Check if all interfaces are closed
-int all_interfaces_closed(InterestTable *table, char *name) {
+InterestEntry *clear_interest_table(InterestEntry *head) {
     
-    if (table == NULL || name == NULL) {
-        return 1; // Return all interfaces are closed if the table or name is NULL
-    }
-    
+    if(head == NULL){
 
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        // Find the interest entry with the given object name
-        if (table->entries[i]->active && strcmp(table->entries[i]->name, name) == 0) {
-            for (int j = 0; j < MAX_INTERFACES; j++) {
-                if (table->entries[i]->interfaces[j] != CLOSED) {
-                    return 0; // At least one interface is not closed
-                }
-            }
-            return 1; // All interfaces are closed
-        }
+        printf("The interest table is already empty\n");
+        return head;
     }
 
-    return 1; // Consider all interfaces closed if the interest is not found
-}
+    InterestEntry *aux = head, *aux2del;
 
-// Search for an interest in the table
-int search_interest(InterestTable *table, char *name) {
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        if (table->entries[i]->active && strcmp(table->entries[i]->name, name) == 0) {
-            return 1; // Interest found
-        }
-    }
-    return 0; // Interest not found
-}
+    while(aux != NULL){
 
-// Search for the interface that is waiting for the object
-int search_waiting_interface(InterestTable *table, char *name) {
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        // Find the interest entry with the given object name
-        if (table->entries[i]->active && strcmp(table->entries[i]->name, name) == 0) {
-            for (int j = 0; j < MAX_INTERFACES; j++) {
-                if (table->entries[i]->interfaces[j] == WAITING) {
-                    return j; // Return the index of the waiting interface
-                }
-            }
-        }
+        aux2del = aux;
+        aux = aux->next;
+        free_interest(&aux2del);
     }
-    return -1;
-}
-
-InterfaceState search_interest_interface_state(InterestTable *table, char *name, int interface_index){
-    
-    if (table == NULL || name == NULL) {
-        return CLOSED; // Return closed if the table or name is NULL
-    }
-    
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        // Find the interest entry with the given object name
-        if (table->entries[i]->active && strcmp(table->entries[i]->name, name) == 0) {
-            if (interface_index >= 0 && interface_index < MAX_INTERFACES) {
-                return table->entries[i]->interfaces[interface_index]; // Return the state of the interface
-            }
-            else {
-                return CLOSED; // Return closed if the interface index is invalid
-            }
-        }
-    }
-    return CLOSED; // Return closed if the interest is not found
+    head = NULL;
+    return head;
 }
 
 // Show all entries in the interest table
-void show_interest_table(InterestTable *table) {
-    printf("Interest Table:\n");
-    for (int i = 0; i < MAX_ENTRIES; i++) {
-        if (table->entries[i]->active) {
-            printf("Entry %d:\n", i + 1);
-            printf("  Object: %s\n", table->entries[i]->name);
-            printf("  Interfaces: ");
-            for (int j = 0; j < MAX_INTERFACES; j++) {
-                printf("%d ", table->entries[i]->interfaces[j]);
-            }
-            printf("\n");
-        }
+void show_interest_table(InterestEntry *head){
+    
+    if(head == NULL){
+
+        printf("No interests to show");
+        return;
     }
+
+    printf("The interest table goes as follows:\n\n");
+
+    InterestEntry *aux = head;
+
+    while(aux != NULL){
+
+        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
+        printf("Object in question: %s\n", aux->name);
+        printf("Current state: %s\n\n", aux->state_str);
+        aux = aux->next;
+    }
+    return;
+
 }
+
+// To check if all interfaces are closed for object 'name', try to find one interface with 'WAITING' as
+// the current state. 
+// If you find one, not all interfaces are closed.
+// If you don't find one, they are either closed or in ANSWER state, in which case you send NOOBJECT and delete 
+// the entries from the table
+
+// Search for an interest in the table to see if we are duplicating or not
+int search_interest(InterestEntry *head, nodeinfo_t *target_node, char *name, InterfaceState target_state) {
+    
+    // by passing NULL to the target_node, we only search entries with 'name' and 'target_state'
+    if(head == NULL){
+
+        //no interest to search, the table is empty
+        return 0;        
+    }
+    InterestEntry *aux = head;
+
+    while(aux != NULL){
+        
+        if(target_node != NULL){
+            if(strcmp(aux->interface_addr, target_node->node_addr) != 0){
+
+                //different address, see next entry
+                aux = aux->next;
+                continue;
+            }
+            if(strcmp(aux->interface_tcp, target_node->tcp_port) != 0){
+
+                //different port, see next entry
+                aux = aux->next;
+                continue;
+            }            
+        }
+        if(strcmp(aux->name, name) != 0){
+
+            //different name, see next entry
+            aux = aux->next;
+            continue;
+        }
+        if(aux->current_state != target_state){
+
+            //different state, see next entry
+            aux = aux->next;
+            continue;
+        }
+        // interest found, return 1
+        return 1;
+    }
+    return 0;
+}
+
+
+
+
 

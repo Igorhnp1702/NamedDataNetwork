@@ -41,13 +41,13 @@
 #define nodeslist_str "NODESLIST"   // UDP msg NODESLIST 
 
 // interactions with other nodes for tree maintenance
-#define entry_str "ENTRY"       // TCP msg ENTRY
-#define safe_str "SAFE"         // TCP msg SAFE
+#define entry_str "ENTRY"           // TCP msg ENTRY
+#define safe_str "SAFE"             // TCP msg SAFE
 
 // interactions with other nodes to exchange objects
-#define interest_msg_str "INTEREST"    // TCP msg INTEREST
-#define object_str "OBJECT"     // TCP msg OBJECT
-#define noobject_str "NOOBJECT" // TCP msg NOOBJECT
+#define interest_msg_str "INTEREST" // TCP msg INTEREST
+#define object_str "OBJECT"         // TCP msg OBJECT
+#define noobject_str "NOOBJECT"     // TCP msg NOOBJECT
 
 // project libraries
 #include "ndn_node.h"
@@ -66,9 +66,9 @@ char *send_safe(int fd, char *ext_ip, char *ext_tcp);
 
 void send_interest(int fd, char *object_name, struct personal_node *slf_node);
 
-char *send_object(int fd, char *object_name, struct personal_node *slf_node);
+void send_object(char *object_name, struct personal_node *slf_node);
 
-char *send_noobject(int fd, char *object_name, struct personal_node *slf_node); 
+void send_noobject(char *object_name, struct personal_node *slf_node); 
 
 int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node);
 

@@ -44,10 +44,12 @@
 #define clear_str "clear"                   // partial cmd string
 #define clear_names_str_short "cn"          // short for clear names
 
+#define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
+
 // project libraries
 
-#include "ndn_messages.h"
 #include "ndn_node.h"
+#include "ndn_objectStructs.h"
 
 
 
@@ -114,65 +116,22 @@ int join(struct personal_node *personal, char *net);
  **************************************************************/
  int djoin(struct personal_node *personal, char *connectIP, char *connectTCP);
 
-// /***************************************************************
-//  * create()
-//  *
-//  *  Description:
-//  *
-//  *  -Insert "name" in the linked list of contents;
-//  *
-//  *  Arguments:
-//  *
-//  *  -queue_head = the head of the linked list of contents;
-//  *  -name = name of content;
-//  *
-//  * Return: A pointer to the updated list of contents;
-//  **************************************************************/
+/***************************************************************
+ * create()
+ *
+ *  Description:
+ *
+ *  -Insert "name" in the linked list of contents;
+ *
+ *  Arguments:
+ *
+ *  -queue_head = the head of the linked list of contents;
+ *  -name = name of content;
+ *
+ * Return: A pointer to the updated list of contents;
+ **************************************************************/
+storageList_t *create(storageList_t *storage_head, char *object);
 
-
-
- storageList_t *create(storageList_t *storage_head, char *object);
-
-// /***************************************************************
-//  * delete()
-//  *
-//  *  Description:
-//  *
-//  *  -Remove "name" from the linked list of contents;
-//  *
-//  *  Arguments:
-//  *
-//  *  -contents = a pointer to the linked list of contents;
-//  *  -name = name of content;
-//  *
-//  *  Return: A pointer to the updated list of contents;
-//  **************************************************************/
-
-
-
-
-
- objectQueue_t *delete(objectQueue_t *queue_ptr, char *name); 
-
-// /***************************************************************
-//  * retrieve()
-//  *
-//  *  Description:
-//  *
-//  *  -Searches for content of name "name" located in node "dest_id".
-//  *
-//  *  Arguments:
-//  *
-//  *  -personal = a pointer to the personal node;
-//  *  -dest_id = the index of the node where "name" is being searched;
-//  *  -name = name of content;
-//  *
-//  *  Return: 0 on success; 1 on failure;
-//  **************************************************************/
-
-
-
- //int retrieve(struct personal_node *personal, char *name);
 
 /***************************************************************
  * show_topology()
@@ -189,50 +148,20 @@ int join(struct personal_node *personal, char *net);
  **************************************************************/
 int show_topology(struct personal_node *personal);
 
-// /***************************************************************
-//  * show_names()
-//  *
-//  *  Description:
-//  *
-//  *  -Show the names of all contents located in the personal node's list;
-//  *
-//  *  Arguments:
-//  *
-//  *  -personal = a pointer to the list of contents;
-//  *
-//  *  Return: 0 on success; 1 on failure;
-//  **************************************************************/
+/***************************************************************
+ * show_names()
+ *
+ *  Description:
+ *
+ *  -Show the names of all contents located in the personal node's list;
+ *
+ *  Arguments:
+ *
+ *  -personal = a pointer to the list of contents;
+ *
+ *  Return: 0 on success; 1 on failure;
+ **************************************************************/
 void show_names(storageList_t *storage_ptr);
-
-// /***************************************************************
-//  * show_interest_table()
-//  *
-//  *  Description:
-//  *
-//  *  -Shows all the entries in the personal node's interest table;
-//  *
-//  *  Arguments:
-//  *
-//  *  -personal = a pointer to the interest table;
-//  *
-//  *  Return: 0 on success; 1 on failure;
-//  **************************************************************/
-// int show_interest_table(struct personal_node *personal);
-
-// /***************************************************************
-//  * clear_names()
-//  *
-//  *  Description:
-//  *
-//  *  -Clear all the names in the contents table
-//  *
-//  *  Arguments:
-//  *
-//  *  -The array of contents
-//  *
-//  *  Return: A pointer to the updated list of contents
-//  **************************************************************/
-// objectQueue_t *clear_names(objectQueue_t *queue_ptr);
 
 /***************************************************************
  * leave()

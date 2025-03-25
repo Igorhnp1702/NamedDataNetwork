@@ -251,14 +251,7 @@ int main(int argc, char **argv){
             free(my_node->backup_addr);
             free(my_node->backup_tcp);
             free_contact(&node_aux);
-            int i;
-            for (i = 0; i < MAX_ENTRIES; i++) {
-
-                free(my_node->interest_table->entries[i]);
-                
-            }
-            free(my_node->interest_table->entries);
-            free(my_node->interest_table);                
+            my_node->interests_ptr = clear_interest_table(my_node->interests_ptr);                
             free(my_node);
             if(message != NULL) free(message);
             exit(1);                
@@ -290,14 +283,7 @@ int main(int argc, char **argv){
                             free(my_node->personal_net);
                             free(my_node->backup_addr);
                             free(my_node->backup_tcp);                        
-                            int i;
-                            for (i = 0; i < MAX_ENTRIES; i++) {
-
-                                free(my_node->interest_table->entries[i]);
-                                
-                            }
-                            free(my_node->interest_table->entries);
-                            free(my_node->interest_table);
+                            my_node->interests_ptr = clear_interest_table(my_node->interests_ptr);                            
                             free(my_node);
                             free_contact(&node_aux);
                             if(message != NULL) free(message);
@@ -546,25 +532,7 @@ int main(int argc, char **argv){
                                     message = NULL;
                                 }
                             }
-                        }
-                        // else if(fd_itr == node_aux->node_fd){
-
-                        //     // the message came from a new intern node that did not send
-                        //     // ENTRY message yet
-
-                        //     while((message = parseNstore(buffer, &(node_aux->node_buff))) != NULL){
-
-                        //         memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
-                        //         if(parse_tcp(my_node, message, node_aux) == 1){
-                        //             printf("Error in main: failed to parse a message\n");
-                                    
-                        //         }
-                        //         if(message != NULL){
-                        //             free(message);
-                        //             message = NULL;
-                        //         }
-                                    
-                        //     }
+                        }                        
                         
                         else{
 

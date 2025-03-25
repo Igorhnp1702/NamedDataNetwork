@@ -12,47 +12,48 @@
  #ifndef ndn_interestTable_header
  #define ndn_interestTable_header
 
- #include <stdio.h>
- #include <string.h>
+ #define ANSWER_STR "ANSWER"
+ #define WAITING_STR "WAITING"
+ #define CLOSED_STR "CLOSED"
 
- #define MAX_ENTRIES 10
- #define MAX_NAME_LENGTH 101
- #define MAX_INTERFACES 10
-
+ 
 
 // Interfaces' States
-typedef enum {
+typedef enum State{    
     ANSWER,   
     WAITING,  
     CLOSED
 } InterfaceState;
 
-// Structure of an entry in the interest table
+// Structure of a node in the interest table list
 typedef struct InterestEntry{
-    char name[MAX_NAME_LENGTH];                // Object name
-    InterfaceState interfaces[MAX_INTERFACES]; // Interfaces' states
-    int active;                                // 1 = Active, 0 = Inactive
+    char *name;                // Object name
+    char *interface_addr;
+    char *interface_tcp;
+    char *state_str;
+    int interface_fd;
+    InterfaceState current_state;
+    struct InterestEntry *next;
 } InterestEntry;
 
-// Structure of the interest table
-typedef struct InterestTable{
-    InterestEntry **entries;
-} InterestTable;
+#include "ndn_node.h"
 
+InterestEntry *init_interest_table(InterestEntry *head); // Initialize the list with the interests
 
+InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *name, InterfaceState initial_state); // add an interest to the interest table
 
+InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state);
 
-InterestTable *init_interest_table(InterestTable *table);
-int add_interest(InterestTable *table, char *name, InterfaceState initial_state);
-int remove_interest(InterestTable *table, char *name);
-void update_interface_state(InterestTable *table, char *name, int interface_index, InterfaceState state);
-void clear_interest_table(InterestTable **table);
-int all_interfaces_closed(InterestTable *table, char *name);
-int search_interest(InterestTable *table, char *name);
-int search_waiting_interface(InterestTable *table, char *name);
-InterfaceState search_interest_interface_state(InterestTable *table, char *name, int interface_index);
-void show_interest_table(InterestTable *table);
+InterestEntry *remove_interests(InterestEntry *table, char *name2del); // remove all interests from the interest table related to 'name2del'
 
+void free_interest(InterestEntry **interest_block); // free the memory allocated for the interest
 
+InterestEntry *update_interface_state(InterestEntry *head, int src_fd ,char *name, InterfaceState new_state); // update the state of an interest
 
- #endif
+InterestEntry *clear_interest_table(InterestEntry *table); // clear the interest table from memory
+
+void show_interest_table(InterestEntry *head); // Display the interest table on screen
+
+int search_interest(InterestEntry *head, nodeinfo_t *target_node, char *name, InterfaceState target_state); // search the interest in the interest table
+
+#endif
