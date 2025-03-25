@@ -19,6 +19,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <string.h>
 
 // networking libraries
 #include <netdb.h>
@@ -840,6 +841,12 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     nodesLinkedlist_t *aux;
 
+    nodeinfo_t *temp = NULL; 
+    temp = contact_init(temp);
+    strcpy(temp->node_addr, slf_node->personal_addr);
+    strcpy(temp->tcp_port, slf_node->personal_tcp);
+    temp->node_fd = -1;
+
     //get commnand
     if (sscanf(msg, "%8s", cmd) != 1) {
         printf("Error in parse_tcp: Failed to read message type\n");
@@ -919,9 +926,38 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             
             printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port);
             printf("%s\n\n", object_buff);
+            
+            // clear the entry that was in the waiting state, if it exists
+
+            if(search_interest(slf_node->interests_ptr, src_node, object_buff, WAITING)){
+
+                slf_node->interests_ptr = RemoveSingleInterest(slf_node->interests_ptr, src_node, object_buff, WAITING);
+            }
+
+            // if im waiting for the object, copy the object to the storages and clear myself from the interest table
+            
+            if(search_interest(slf_node->interests_ptr, temp, object_buff, WAITING)){
+
+                printf("The object '%s' is now in your possession\n\n", object_buff);
+                
+                slf_node->storage_ptr = storageInsert(slf_node->storage_ptr, object_buff);
+
+                // Delete the old object in cache to make sure you have space for new object
+
+                if(slf_node->queue_ptr->object_counter == slf_node->queue_ptr->queue_limit){
+
+                    slf_node->queue_ptr = deleteOld(slf_node->queue_ptr);
+                }
+                
+                // and place the object in cache
+                slf_node->queue_ptr = insertNew(slf_node->queue_ptr, object_buff);
+
+            }
+            slf_node->interests_ptr = RemoveSingleInterest(slf_node->interests_ptr, temp, object_buff, WAITING);
+                        
             // check interest table to see if I have to answer someone             
 
-            if(search_interest(slf_node->interests_ptr, NULL, object_buff, ANSWER) == 1){                                                    
+            if(search_interest(slf_node->interests_ptr, NULL, object_buff, ANSWER)){                                                    
 
                 send_object(object_buff, slf_node);                                                       
 
@@ -960,17 +996,23 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
         if(sscanf(msg, "%*s %100s",object_buff) == 1){
             
-            printf("Received NOOBJECT: %s\n", object_buff);
+            printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port);
+            printf("%s\n\n", object_buff);
 
-            // Send NOOBJECT to all interfaces that are waiting for the object
-            send_noobject(object_buff, slf_node);
-           
-
-            // check if all interfaces are closed
+            // close this interface, if necessary
+            if(search_interest(slf_node->interests_ptr, src_node, object_buff, WAITING)){
+                slf_node->interests_ptr = update_interface_state(slf_node->interests_ptr,src_node->node_fd, object_buff, CLOSED);
+            }
+            
+            // check if all interfaces are closed for this object
 
             if (!search_interest(slf_node->interests_ptr, NULL, object_buff, WAITING)){
                 // all interfaces for object_buff are closed
-                // remove interest from table
+
+                // send NOOBJECT
+                send_noobject(object_buff, slf_node);
+
+                // remove interest from table                                
                 slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff);
             }
         }

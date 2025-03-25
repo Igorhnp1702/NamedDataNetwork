@@ -39,18 +39,25 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
         exit(1);
     }
     new_entry->current_state = initial_state;
-    
-    if(initial_state == ANSWER) new_entry->state_str = ANSWER_STR;
-    else if(initial_state == WAITING) new_entry->state_str = WAITING_STR;
-    else if(initial_state == CLOSED) new_entry->state_str = CLOSED_STR;
+    new_entry->state_str = NULL;
+    if((new_entry->state_str = (char*)calloc(MAX_STATE_CHARS, sizeof(char))) == NULL){
+
+        printf("Error in add_interest: Failed to allocate memory. Process terminated");
+        exit(1);
+    }
+
+    if(initial_state == ANSWER)       strcpy(new_entry->state_str, ANSWER_STR);
+    else if(initial_state == WAITING) strcpy(new_entry->state_str, WAITING_STR);
+    else if(initial_state == CLOSED)  strcpy(new_entry->state_str, CLOSED_STR);
     
     else{
 
         printf("Invalid interface state. The interest was not added");
+        free(new_entry->state_str);
         free(new_entry);
         return head;
     }
-
+    
     new_entry->interface_addr = NULL;
     if((new_entry->interface_addr = (char*)calloc(MAX_ADDRESS_SIZE, sizeof(char))) == NULL){
 
@@ -65,6 +72,13 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
         exit(1);
     }
 
+    new_entry->state_str = NULL;
+    if((new_entry->state_str = (char*)calloc(MAX_STATE_CHARS, sizeof(char))) == NULL){
+
+        printf("Error in add_interest: Failed to allocate memory. Process terminated");
+        exit(1);
+    }
+
     new_entry->name = NULL;
     if((new_entry->name = (char*)calloc(MAX_NAME_LENGTH, sizeof(char))) == NULL){
 
@@ -74,29 +88,10 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
     strcpy(new_entry->name, name);
 
     new_entry->next = NULL;
-
-    if(src_node == NULL){ // it's me, MARIO
-
-
-    } 
-
-    
-
-    new_entry->interface_fd = src_node->node_fd;
-    
-
-     
-
-    
-    strcpy(new_entry->interface_addr, src_node->node_addr);
-
-
-    
+    new_entry->interface_fd = src_node->node_fd;             
+    strcpy(new_entry->interface_addr, src_node->node_addr);    
     strcpy(new_entry->interface_tcp, src_node->tcp_port);
     
-
-    
-
     if(head == NULL){
 
         head = new_entry;
@@ -112,9 +107,9 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
 
     aux = head;
 
-    while (aux != NULL) aux = aux->next;
+    while (aux->next != NULL) aux = aux->next;
     
-    aux = new_entry;
+    aux->next = new_entry;
 
     printf("New entry in the interest table:\n\n");    
     printf("Interface: [%s | %s]\n", new_entry->interface_addr, new_entry->interface_tcp);
@@ -128,7 +123,10 @@ void free_interest(InterestEntry **interest_block){
     free((*interest_block)->interface_addr);
     free((*interest_block)->interface_tcp);
     free((*interest_block)->name);
+    free((*interest_block)->state_str);
     free((*interest_block));
+
+    
 }
 
 InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state){

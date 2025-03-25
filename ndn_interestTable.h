@@ -15,6 +15,7 @@
  #define ANSWER_STR "ANSWER"
  #define WAITING_STR "WAITING"
  #define CLOSED_STR "CLOSED"
+ #define MAX_STATE_CHARS 8
 
  
 
