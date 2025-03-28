@@ -98,6 +98,8 @@ struct personal_node *personal_init(struct personal_node *personal){
     personal->internals_list = Listinit(personal->internals_list);
     personal->interests_ptr = NULL;
     personal->interests_ptr = init_interest_table(personal->interests_ptr);
+    personal->my_interests = NULL;
+    personal->my_interests = init_interest_table(personal->my_interests);
     
     return personal;
 }//personal_init()
@@ -130,6 +132,7 @@ struct personal_node *reset_personal(struct personal_node *personal){
     personal->queue_ptr = queueInit(personal->queue_ptr, personal->cache_limit);
     personal->storage_ptr = storageClear(personal->storage_ptr);
     personal->interests_ptr = clear_interest_table(personal->interests_ptr);
+    personal->my_interests = clear_interest_table(personal->my_interests);
 
     /*clear extern and backup nodes*/
     if (personal->extern_node != NULL){        

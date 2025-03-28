@@ -41,9 +41,9 @@ typedef struct InterestEntry{
 
 InterestEntry *init_interest_table(InterestEntry *head); // Initialize the list with the interests
 
-InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *name, InterfaceState initial_state); // add an interest to the interest table
+InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *name, InterfaceState initial_state, int retrieve_flag); // add an interest to the interest table
 
-InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state);
+InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state, int retrieve_flag);
 
 InterestEntry *remove_interests(InterestEntry *table, char *name2del); // remove all interests from the interest table related to 'name2del'
 

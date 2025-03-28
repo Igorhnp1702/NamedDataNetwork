@@ -32,7 +32,7 @@
 
 int is_valid_ip(const char *ip) {
     struct sockaddr_in sa;
-    return inet_pton(AF_INET, ip, &(sa.sin_addr)) != 0;  // IPv4 check
+    return inet_pton(AF_INET, ip, &(sa.sin_addr)) == 1;  // IPv4 check
 }
 
 int check_net(char *net){
@@ -437,13 +437,18 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         return ++success_flag;
     }        
            
+    if(is_valid_ip(connectIP) != 1){
+        printf("Error in direct join: Invalid IPv4 address. Command ignored\n");
+        printf("Please insert 4 numbers between 0 and 255 seperated by dots\n");        
+        return ++success_flag;
+    }
+
     if(check_ports(connectTCP) == 1){
-        printf("Error in direct join: The boot TCP port is invalid. Command ignored\n");
-        printf("Please insert a 1 to 5 digit TCP port from 0 to 65536\n");        
+        printf("Error in direct join: Invalid TCP port. Command ignored\n");
+        printf("Please insert a 1 to 5 digit TCP port from 0 to 65535\n");        
         return ++success_flag;
     }
     
-
     int errflag;                  // flag to check for errors in function calls    
     struct addrinfo *srv_result;  // list of address structures
     struct addrinfo srv_criteria; // necessary criteria to select the address structures from the list

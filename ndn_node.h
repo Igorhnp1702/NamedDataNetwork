@@ -68,6 +68,7 @@ fd_set crr_scks;                    // set of file descriptors in use (crr = cur
 storageList_t * storage_ptr;
 objectQueue_t *queue_ptr;           // double linked list of the contents of the node
 InterestEntry *interests_ptr;      // table of interests
+InterestEntry *my_interests;
 nodeinfo_t *extern_node;            // contact of the extern neighbor node
 nodesLinkedlist_t *internals_list; // list of contacts of internal neighbors
 };

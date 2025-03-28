@@ -29,7 +29,7 @@ InterestEntry *init_interest_table(InterestEntry *head) {
 }
 
 // Add an interest to the table
-InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *name, InterfaceState initial_state) {
+InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *name, InterfaceState initial_state, int retrieve_flag) {
     
     InterestEntry *new_entry = NULL, *aux;    
     
@@ -89,11 +89,14 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
     if(head == NULL){
 
         head = new_entry;
+        if(retrieve_flag == 0){
 
-        printf("New entry in the interest table:\n\n");        
-        printf("Interface: [%s | %s]\n", new_entry->interface_addr, new_entry->interface_tcp);
-        printf("Object in question: %s\n", name);
-        printf("State: %s\n\n", new_entry->state_str);
+            printf("New entry in the interest table:\n\n");        
+            printf("Interface: [%s | %s]\n", new_entry->interface_addr, new_entry->interface_tcp);
+            printf("Object in question: %s\n", name);
+            printf("State: %s\n\n", new_entry->state_str);
+        }
+        
         return head;
     }
     
@@ -105,10 +108,14 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
     
     aux->next = new_entry;
 
-    printf("New entry in the interest table:\n\n");    
-    printf("Interface: [%s | %s]\n", new_entry->interface_addr, new_entry->interface_tcp);
-    printf("Object in question: %s\n", name);
-    printf("Current state: %s\n\n", new_entry->state_str);
+    if(retrieve_flag == 0){
+
+        printf("New entry in the interest table:\n\n");    
+        printf("Interface: [%s | %s]\n", new_entry->interface_addr, new_entry->interface_tcp);
+        printf("Object in question: %s\n", name);
+        printf("Current state: %s\n\n", new_entry->state_str);
+    }
+    
     return head;    
 }
 
@@ -123,11 +130,11 @@ void free_interest(InterestEntry **interest_block){
     
 }
 
-InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state){
+InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state, int retrieve_flag){
 
     if(head == NULL){
 
-        printf("Error in RemoveSingleInterest: There are no interests to remove\n");
+        //printf("Error in RemoveSingleInterest: There are no interests to remove\n");
         return head;
     }
 
@@ -157,17 +164,26 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
     }
 
     if(counter == 4){
-
+        
         // the head will be removed and NULL will be returned
-        printf("The following interest entry will be removed:\n\n");
-        printf("Interface: [%s | %s]\n", head->interface_addr, head->interface_tcp);
-        printf("Object in question: %s\n", head->name);
-        printf("Current state: %s\n\n", head->state_str);
+
+        if(retrieve_flag == 0){
+
+            printf("The following interest entry will be removed:\n\n");
+            printf("Interface: [%s | %s]\n", head->interface_addr, head->interface_tcp);
+            printf("Object in question: %s\n", head->name);
+            printf("Current state: %s\n\n", head->state_str);
+        }
+       
         aux2del = head;
         head = head->next;
         free_interest(&aux2del);
         return head;
     }
+
+    aux = head;
+
+    if(aux == NULL) return head;
 
     while(aux->next != NULL){
         
@@ -204,11 +220,14 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
             aux = aux->next;
             continue;
         }
-        
-        printf("The following interest entry will be removed:\n\n");
-        printf("Interface: [%s | %s]\n", aux->next->interface_addr, aux->next->interface_tcp);
-        printf("Object in question: %s\n", aux->next->name);
-        printf("Current state: %s\n\n", aux->next->state_str);
+        if(retrieve_flag == 0){
+
+            printf("The following interest entry will be removed:\n\n");
+            printf("Interface: [%s | %s]\n", aux->next->interface_addr, aux->next->interface_tcp);
+            printf("Object in question: %s\n", aux->next->name);
+            printf("Current state: %s\n\n", aux->next->state_str);
+        }
+       
         aux2del = aux->next;
         aux->next = aux->next->next;                
         free_interest(&aux2del);
@@ -216,7 +235,7 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
         
     }
     
-    printf("Error in RemoveSingleInterest: Failed to remove desired interest entry\n");
+    //printf("Error in RemoveSingleInterest: Failed to remove desired interest entry\n");
     return head;
 }
 
@@ -227,7 +246,7 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
 
     if(head == NULL){
 
-        printf("Error in remove interest: There are no interests to remove\n");
+        //printf("Error in remove interest: There are no interests to remove\n");
         return head;
     }
     InterestEntry *aux, *aux2del;
@@ -239,10 +258,14 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
         aux2del = head;
         head = head->next;
         free_interest(&aux2del);
+        if(head == NULL)break;
 
     }    
         
     aux = head;
+    
+    if(aux == NULL) return head;
+
     while(aux->next != NULL){
 
         if(strcmp(aux->next->name, name2del) == 0){
@@ -260,7 +283,7 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
 // Update the state of an interface for a given interest
 InterestEntry *update_interface_state(InterestEntry *head, int src_fd ,char *name, InterfaceState new_state) {
     
-    if(new_state != ANSWER || new_state != CLOSED || new_state != WAITING){
+    if((new_state != ANSWER) && (new_state != CLOSED) && (new_state != WAITING)){
        
         printf("Error in update_interface_state: Invalid state was passed.\n");
         printf("Update canceled\n\n");
@@ -277,7 +300,7 @@ InterestEntry *update_interface_state(InterestEntry *head, int src_fd ,char *nam
 
     InterestEntry *aux = head;
 
-    while(aux != head){
+    while(aux != NULL){
 
         if(aux->interface_fd != src_fd){ 
 

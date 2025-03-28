@@ -32,7 +32,7 @@ ${OBJDIR}ndn_node.o: ${SRCDIR}ndn_node.c ${SRCDIR}ndn_node.h ${SRCDIR}ndn_messag
 ${OBJDIR}ndn_commands.o: ${SRCDIR}ndn_commands.c ${SRCDIR}ndn_commands.h ${SRCDIR}ndn_node.h ${SRCDIR}ndn_messages.h ${SRCDIR}ndn_objectStructs.h 
 	${CC} ${CFLAGS} -c ${SRCDIR}ndn_commands.c -o ${OBJDIR}ndn_commands.o
 
-${OBJDIR}ndn_messages.o: ${SRCDIR}ndn_messages.c ${SRCDIR}ndn_messages.h ${SRCDIR}ndn_node.h  ${SRCDIR}ndn_interestTable.h ${SRCDIR}ndn_objectStructs.h 
+${OBJDIR}ndn_messages.o: ${SRCDIR}ndn_messages.c ${SRCDIR}ndn_messages.h ${SRCDIR}ndn_node.h  ${SRCDIR}ndn_interestTable.h ${SRCDIR}ndn_objectStructs.h ${SRCDIR}ndn_commands.h
 	${CC} ${CFLAGS} -c ${SRCDIR}ndn_messages.c -o ${OBJDIR}ndn_messages.o
 
 ${OBJDIR}ndn_interestTable.o: ${SRCDIR}ndn_interestTable.c ${SRCDIR}ndn_interestTable.h ${SRCDIR}ndn_node.h ${SRCDIR}ndn_messages.h
