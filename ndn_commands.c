@@ -186,15 +186,34 @@ void select_cmd(struct personal_node *personal, char *input){
         } 
     }//else if delete or d
 
-    else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){
+    else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){                       
         
-        if(sscanf(input, "%*s %100s", object_string) == 1){
+        if(sscanf(input, "%*s %100s", object_string) == 1){            
             
             printf("Executing %s...\n\n", retrieve_str);
             
             // VER SE TENHO O OBJETO EM CACHE 
             // SE NAO TIVER SEND INTERST 
             // SE TIVER RETORNAR O OBJETO
+
+            if(personal->network_flag != 1){
+
+                printf("Although you are not inside a network, local object locations will be checked\n\n");
+                
+                if (queueSearch(personal->queue_ptr, object_string)) {
+                
+                    printf("Object %s was found in cache\n\n", object_string);
+                    return;
+                                 
+                } 
+                else if (storageSearch(personal->storage_ptr, object_string)) {
+                    
+                    printf("Object %s was found in private storage\n\n", object_string);
+                    return;
+                }
+                printf("The object was not found locally\n");
+                return;
+            }
             
             if (queueSearch(personal->queue_ptr, object_string)) {
                 
@@ -206,13 +225,12 @@ void select_cmd(struct personal_node *personal, char *input){
                 
                 printf("Object %s was found in private storage\n\n", object_string);
                 return;
-            }
+            }            
             else {
                 
                 printf("Sending INTEREST message to everybody\n\n");
                 send_interest(-1, object_string, personal);
-            }
-            
+            }            
             return; 
         }
         else{
@@ -511,8 +529,12 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
             close(personal->server_fd);
             return 1;
         }
-        personal->anchorflag = 1;             //!confirmar        
-        personal->network_flag = 1;                
+        
+        strcpy(personal->extern_node->node_addr, personal->personal_addr);
+        strcpy(personal->extern_node->tcp_port, personal->personal_tcp);
+        personal->anchorflag = 1;                    
+        personal->network_flag = 1;
+        printf("From now on, you are alone in the network and you are your own extern neighbor\n");                
         
     }
 
@@ -617,23 +639,13 @@ int show_topology(struct personal_node *personal){
         printf("Error in show topology: You are not inside a network\n");
         return ++success_flag;
     }
-    if(personal->extern_node != NULL){
-        
-        if (strcmp(personal->extern_node->node_addr, "") != 0) {
-            printf("\n\nExtern neighbor's info: \n");        
-            printf("Adress: %s\nPort: %s\n\n",                  
-            personal->extern_node->node_addr, 
-            personal->extern_node->tcp_port);
-                        
-        }else {
-            printf("\nThere is no extern neighbor!\n");
-        }
-
-    }
-    else {
-        printf("\nThere is no extern neighbor!\n");
-    }
-
+                   
+    printf("\n\nExtern neighbor's info: \n");        
+    printf("Adress: %s\nPort: %s\n\n",                  
+    personal->extern_node->node_addr, 
+    personal->extern_node->tcp_port);
+                                    
+    
     if (strcmp(personal->backup_addr, "") != 0) {
         printf("\n\nBackup neighbor's info: \n");                
         printf("Adress: %s\nPort: %s\n\n",                  

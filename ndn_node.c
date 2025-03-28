@@ -237,7 +237,12 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 
 	if(head->node->node_fd == old_fd){ //if the head has the desired node
 
-		printf("\n[%s | %s] was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
+		if((strcmp(head->node->node_addr, "") == 0) || 
+           (strcmp(head->node->node_addr, "") == 0)){
+        
+            // avoid the print
+        }
+        else printf("\n[%s | %s] was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
         aux = head;
 		head = head->next;
         close(aux->node->node_fd);

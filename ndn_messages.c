@@ -462,11 +462,12 @@ void send_interest(int fd2avoid, char *object_name, struct personal_node *slf_no
                     }                     
                 }
             }
+            current = current->next;
         }
 
         // add yourself to the interest table and set yourself to ANSWER state
 
-        slf_node->interests_ptr = add_interest(slf_node->interests_ptr, NULL, object_name, ANSWER);
+        //slf_node->interests_ptr = add_interest(slf_node->interests_ptr, NULL, object_name, ANSWER);
     }
     else{  // received INTEREST message from someone and I don't have the object, send INTEREST to everybody except the source
 
@@ -537,9 +538,7 @@ void send_interest(int fd2avoid, char *object_name, struct personal_node *slf_no
         }
     }
 
-    free(buffer);
-    
-
+    free(buffer);    
     return;
 }
 
@@ -547,7 +546,7 @@ void send_object(char *object_name, struct personal_node *slf_node) {
     
     char *ptr;
     char *buffer = NULL;
-    InterestEntry *aux = slf_node->interests_ptr, *aux2del, *prev;
+    InterestEntry *aux = slf_node->interests_ptr;
     ssize_t nbytes, nleft, nwritten;
     int extern_flag = 0, writefail = 0;
 
@@ -605,14 +604,7 @@ void send_object(char *object_name, struct personal_node *slf_node) {
             printf("%s\n\n", buffer);
         }
         writefail = 0;
-
-        printf("The following interest entry will be removed:\n\n");
-        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
-        printf("Object in question: %s\n", aux->name);
-        printf("Current state: %s\n\n", aux->state_str);
-        aux2del = aux;
-        aux = aux->next;
-        free_interest(&aux2del);        
+               
     }
 
     while(aux != NULL){
@@ -620,23 +612,20 @@ void send_object(char *object_name, struct personal_node *slf_node) {
         if(strcmp(aux->name, object_name) != 0){
 
             //different name, see next entry
-            
-            prev = aux;
+                        
             aux = aux->next;
             continue;
         }
         if(aux->current_state != ANSWER){
 
             //different state, see next entry
-            
-            prev = aux;
+                        
             aux = aux->next;
             continue;
         }
         if((aux->interface_fd == slf_node->extern_node->node_fd) && (extern_flag = 1)){
 
-            //Do not send this message twice, skip to next interest entry
-            prev = aux;
+            //Do not send this message twice, skip to next interest entry            
             aux = aux->next;
             continue;
         }
@@ -664,16 +653,7 @@ void send_object(char *object_name, struct personal_node *slf_node) {
         
         //To avoid sending this message twice to the extern node
         if(aux->interface_fd == slf_node->extern_node->node_fd) extern_flag++;
-
-        printf("The following interest entry will be removed:\n\n");
-        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
-        printf("Object in question: %s\n", aux->name);
-        printf("Current state: %s\n\n", aux->state_str);
-        aux2del = aux;
-        prev->next = aux->next;
-        aux = aux->next;
-        free_interest(&aux2del);
-                
+        
     }
     free(buffer);
                
@@ -850,6 +830,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
     //get commnand
     if (sscanf(msg, "%8s", cmd) != 1) {
         printf("Error in parse_tcp: Failed to read message type\n");
+        free_contact(&temp);
         return ++fail_flag;
     }
 
@@ -915,6 +896,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         }else{
         
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
+            free_contact(&temp);
             return ++fail_flag;
         }                       
             
@@ -925,7 +907,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         if(sscanf(msg, "%*s %100s", object_buff) == 1){
             
             printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port);
-            printf("%s\n\n", object_buff);
+            printf("%s\n\n", msg);
             
             // clear the entry that was in the waiting state, if it exists
 
@@ -988,6 +970,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         }
         else{
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
+            free_contact(&temp);
             return ++fail_flag;
         }
     }
@@ -997,7 +980,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         if(sscanf(msg, "%*s %100s",object_buff) == 1){
             
             printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port);
-            printf("%s\n\n", object_buff);
+            printf("%s\n\n", msg);
 
             // close this interface, if necessary
             if(search_interest(slf_node->interests_ptr, src_node, object_buff, WAITING)){
@@ -1020,6 +1003,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
         else {
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
+            free_contact(&temp);
             return ++fail_flag;
         }
     }
@@ -1027,40 +1011,32 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
     else if (strcmp(cmd, entry_str) == 0) {
 
         if (sscanf(msg, "%*s %15s %5s", ip_cmd, tcp_cmd) == 2){
+
+            if ((strcmp(ip_cmd, slf_node->personal_addr) == 0) &&
+                (strcmp(tcp_cmd, slf_node->personal_tcp) == 0)) {
+
+                printf("Error in parse_tcp: ENTRY message contains my information. Connection closed\n");
+                slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                slf_node->n_internals--;
+                close(src_node->node_fd);
+                FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                free_contact(&temp);
+                return ++fail_flag;    
+
+            }
             
             printf("\nMessage received from a new intern neighbor:\n");
             printf("%s\n\n", msg);
 
-            if (strcmp(slf_node->extern_node->node_addr, "") == 0) {  //I was alone in the network. Answer with SAFE, followed by an ENTRY
+            if ((strcmp(slf_node->extern_node->node_addr, slf_node->personal_addr) == 0)
+                && (strcmp(slf_node->extern_node->tcp_port, slf_node->personal_tcp) == 0)) {  //I was alone in the network. Answer with SAFE, followed by an ENTRY
 
                 //src_node is the new intern node
                 
                 strcpy(src_node->tcp_port, tcp_cmd);
                 strcpy(src_node->node_addr, ip_cmd);
-                                                              
-
-                printf("Sending %s %s %s\n\n", safe_str, ip_cmd, tcp_cmd);
-                return_msg = send_safe(src_node->node_fd, ip_cmd, tcp_cmd);
-                
-                if (return_msg != NULL) {
-
-                    printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
-                    printf("%s %s %s\n\n", safe_str, ip_cmd, tcp_cmd);
-                    
-                    free(return_msg);
-                    return_msg = NULL;                        
-                                                   
-                }
-                else{
-                    printf("Error in parse_tcp.\n");
-                    printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
-                    slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
-                    slf_node->n_internals--;
-                    close(src_node->node_fd);
-                    FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
-                    
-                    return ++fail_flag;                        
-                }
+                                                        
+                printf("I'm not alone anymore\n\n");
 
                 printf("Sending %s %s %s\n\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
                 
@@ -1083,8 +1059,33 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                     slf_node->n_internals--;
                     close(src_node->node_fd);
                     FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                    free_contact(&temp);
                     return ++fail_flag;                        
                 }
+
+                printf("Sending %s %s %s\n\n", safe_str, ip_cmd, tcp_cmd);
+                return_msg = send_safe(src_node->node_fd, ip_cmd, tcp_cmd);
+                
+                if (return_msg != NULL) {
+
+                    printf("\nMessage sent to [%s | %s]:\n", ip_cmd, tcp_cmd);
+                    printf("%s %s %s\n\n", safe_str, ip_cmd, tcp_cmd);
+                    
+                    free(return_msg);
+                    return_msg = NULL;                        
+                                                   
+                }
+                else{
+                    printf("Error in parse_tcp.\n");
+                    printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
+                    slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                    slf_node->n_internals--;
+                    close(src_node->node_fd);
+                    FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                    free_contact(&temp);
+                    return ++fail_flag;                        
+                }
+            
                 strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
                 strcpy(slf_node->extern_node->node_addr, ip_cmd);
                 slf_node->extern_node->node_fd = src_node->node_fd;                
@@ -1115,6 +1116,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                     if (return_msg != NULL){ //reset the pointer to the received message
                         free(return_msg);
                         return_msg = NULL;
+                        free_contact(&temp);
                         return fail_flag;
                     }                                
                 }
@@ -1128,13 +1130,16 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                         close(src_node->node_fd);
                         FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
                     }
+                    free_contact(&temp);
                     return ++fail_flag;                        
                 }
             }                        
         }
         else {
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
+            free_contact(&temp);
             return ++fail_flag;
+            
         }
     }
 
@@ -1187,12 +1192,14 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         }
         else{
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
+            free_contact(&temp);
             return ++fail_flag;
         }
     } 
     
     else{
         printf("Error in parse_tcp: Failed to read command!\n");
+        free_contact(&temp);
         return ++fail_flag;
     }
 
@@ -1200,6 +1207,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         free(return_msg);
         return_msg = NULL;
     }
+    free_contact(&temp);
     return fail_flag;
 }
 

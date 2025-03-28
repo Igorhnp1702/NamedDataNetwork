@@ -473,16 +473,21 @@ int main(int argc, char **argv){
                             }
                             if(my_node->n_internals == 0 && (backup_fail == 1 || my_node->anchorflag == 1)) {  //is now the only node in the network
                                 
-                                // clear the external and the backup node
+                                // become your own extern and clear the backup node
 
                                 
                                 memset(my_node->extern_node->tcp_port, 0, MAX_TCP_UDP_CHARS * sizeof(*my_node->extern_node->tcp_port));
                                 memset(my_node->extern_node->node_addr, 0, MAX_ADDRESS_SIZE * sizeof(*my_node->extern_node->node_addr));
                                 memset(my_node->extern_node->node_buff, 0, MAX_MSG_LENGTH * sizeof(*my_node->extern_node->node_buff));
-                                my_node->extern_node->node_fd = -1;                                
+                                my_node->extern_node->node_fd = -1;
+                                strcpy(my_node->extern_node->node_addr, my_node->personal_addr);
+                                strcpy(my_node->extern_node->tcp_port, my_node->personal_tcp);
+
                                 
                                 memset(my_node->backup_tcp, 0, MAX_TCP_UDP_CHARS * sizeof(*my_node->backup_tcp));
-                                memset(my_node->backup_addr, 0, MAX_ADDRESS_SIZE * sizeof(*my_node->backup_addr));                                                             
+                                memset(my_node->backup_addr, 0, MAX_ADDRESS_SIZE * sizeof(*my_node->backup_addr));  
+                                
+                                printf("At the moment, you are alone in the network and you are your own extern neighbor\n");
                                 
                             }
                             

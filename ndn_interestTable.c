@@ -32,6 +32,7 @@ InterestEntry *init_interest_table(InterestEntry *head) {
 InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *name, InterfaceState initial_state) {
     
     InterestEntry *new_entry = NULL, *aux;    
+    
 
     if((new_entry = (InterestEntry*)calloc(1, sizeof(InterestEntry))) == NULL){
 
@@ -46,9 +47,9 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
         exit(1);
     }
 
-    if(initial_state == ANSWER)       strcpy(new_entry->state_str, ANSWER_STR);
-    else if(initial_state == WAITING) strcpy(new_entry->state_str, WAITING_STR);
-    else if(initial_state == CLOSED)  strcpy(new_entry->state_str, CLOSED_STR);
+    if(initial_state == ANSWER)       strcpy(new_entry->state_str, "ANSWER");
+    else if(initial_state == WAITING) strcpy(new_entry->state_str, "WAITING");
+    else if(initial_state == CLOSED)  strcpy(new_entry->state_str, "CLOSED");
     
     else{
 
@@ -67,13 +68,6 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
 
     new_entry->interface_tcp = NULL;
     if((new_entry->interface_tcp = (char*)calloc(MAX_TCP_UDP_CHARS, sizeof(char))) == NULL){
-
-        printf("Error in add_interest: Failed to allocate memory. Process terminated");
-        exit(1);
-    }
-
-    new_entry->state_str = NULL;
-    if((new_entry->state_str = (char*)calloc(MAX_STATE_CHARS, sizeof(char))) == NULL){
 
         printf("Error in add_interest: Failed to allocate memory. Process terminated");
         exit(1);
@@ -137,26 +131,26 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
         return head;
     }
 
-    InterestEntry *aux = head, *aux2del, *prev;
+    InterestEntry *aux, *aux2del;
     int counter = 4; // number of matches for the head
 
-    if(strcmp(aux->interface_addr, target_node->node_addr) != 0){
+    if(strcmp(head->interface_addr, target_node->node_addr) != 0){
 
         //head has different address
         counter --;
     }
-    if(strcmp(aux->interface_tcp, target_node->tcp_port) != 0){
+    if(strcmp(head->interface_tcp, target_node->tcp_port) != 0){
 
         //head has different port
         counter --;
     }            
     
-    if(strcmp(aux->name, name2del) != 0){
+    if(strcmp(head->name, name2del) != 0){
 
         //head has different name
         counter --;
     }
-    if(aux->current_state != target_state){
+    if(head->current_state != target_state){
 
         //head has different state
         counter --;
@@ -166,58 +160,57 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
 
         // the head will be removed and NULL will be returned
         printf("The following interest entry will be removed:\n\n");
-        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
-        printf("Object in question: %s\n", aux->name);
-        printf("Current state: %s\n\n", aux->state_str);
-        aux2del = aux;
-        aux = aux->next;
+        printf("Interface: [%s | %s]\n", head->interface_addr, head->interface_tcp);
+        printf("Object in question: %s\n", head->name);
+        printf("Current state: %s\n\n", head->state_str);
+        aux2del = head;
+        head = head->next;
         free_interest(&aux2del);
         return head;
     }
 
-    while(aux != NULL){
+    while(aux->next != NULL){
         
         
-        if(strcmp(aux->interface_addr, target_node->node_addr) != 0){
+        if(strcmp(aux->next->interface_addr, target_node->node_addr) != 0){
 
             //different address, see next entry
-            
-            prev = aux;
+                        
             aux = aux->next;
             continue;
         }
-        if(strcmp(aux->interface_tcp, target_node->tcp_port) != 0){
+        if(strcmp(aux->next->interface_tcp, target_node->tcp_port) != 0){
 
             //different port, see next entry
             
-            prev = aux;
+            
             aux = aux->next;
             continue;
         }            
         
-        if(strcmp(aux->name, name2del) != 0){
+        if(strcmp(aux->next->name, name2del) != 0){
 
             //different name, see next entry
             
-            prev = aux;
+            
             aux = aux->next;
             continue;
         }
-        if(aux->current_state != target_state){
+        if(aux->next->current_state != target_state){
 
             //different state, see next entry
             
-            prev = aux;
+            
             aux = aux->next;
             continue;
         }
         
         printf("The following interest entry will be removed:\n\n");
-        printf("Interface: [%s | %s]\n", aux->interface_addr, aux->interface_tcp);
-        printf("Object in question: %s\n", aux->name);
-        printf("Current state: %s\n\n", aux->state_str);
-        aux2del = aux;
-        prev->next = aux->next;                
+        printf("Interface: [%s | %s]\n", aux->next->interface_addr, aux->next->interface_tcp);
+        printf("Object in question: %s\n", aux->next->name);
+        printf("Current state: %s\n\n", aux->next->state_str);
+        aux2del = aux->next;
+        aux->next = aux->next->next;                
         free_interest(&aux2del);
         return head;
         
@@ -237,16 +230,25 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
         printf("Error in remove interest: There are no interests to remove\n");
         return head;
     }
-
     InterestEntry *aux, *aux2del;
+
+    // To remove first
+
+    while(strcmp(head->name, name2del) == 0){
+
+        aux2del = head;
+        head = head->next;
+        free_interest(&aux2del);
+
+    }    
         
     aux = head;
-    while(aux != NULL){
+    while(aux->next != NULL){
 
-        if(strcmp(aux->name, name2del) == 0){
+        if(strcmp(aux->next->name, name2del) == 0){
 
-            aux2del = aux;
-            aux = aux->next;
+            aux2del = aux->next;
+            aux->next = aux->next->next;
             free_interest(&aux2del);
 
         }else aux = aux->next;
@@ -298,9 +300,9 @@ InterestEntry *update_interface_state(InterestEntry *head, int src_fd ,char *nam
 
         aux->current_state = new_state;
 
-        if(new_state == ANSWER) aux->state_str = ANSWER_STR;
-        if(new_state == WAITING) aux->state_str = WAITING_STR;
-        if(new_state == CLOSED) aux->state_str = CLOSED_STR;
+        if(new_state == ANSWER)       strcpy(aux->state_str, "ANSWER");
+        else if(new_state == WAITING) strcpy(aux->state_str, "WAITING");
+        else if(new_state == CLOSED)  strcpy(aux->state_str, "CLOSED");
                 
         printf("Updated state of interface [%s | %s] for object '%s': %s\n\n", aux->interface_addr, aux->interface_tcp, name, aux->state_str);
         
