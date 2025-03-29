@@ -247,11 +247,11 @@ int main(int argc, char **argv){
             leave(my_node);                                
             free_contact(&(my_node->extern_node));
             my_node->queue_ptr = clearQueue(my_node->queue_ptr);
+            my_node->storage_ptr = storageClear(my_node->storage_ptr);
             free(my_node->personal_net);
             free(my_node->backup_addr);
             free(my_node->backup_tcp);
-            free_contact(&node_aux);
-            my_node->interests_ptr = clear_interest_table(my_node->interests_ptr);                
+            free_contact(&node_aux);                           
             free(my_node);
             if(message != NULL) free(message);
             exit(1);                
@@ -278,12 +278,12 @@ int main(int argc, char **argv){
 
                         if(leave(my_node) == 0){
 
-                            free_contact(&(my_node->extern_node));
+                            free_contact(&(my_node->extern_node));                            
                             my_node->queue_ptr = clearQueue(my_node->queue_ptr);
+                            my_node->storage_ptr = storageClear(my_node->storage_ptr);
                             free(my_node->personal_net);
                             free(my_node->backup_addr);
-                            free(my_node->backup_tcp);                        
-                            my_node->interests_ptr = clear_interest_table(my_node->interests_ptr);                            
+                            free(my_node->backup_tcp);                                                                             
                             free(my_node);
                             free_contact(&node_aux);
                             if(message != NULL) free(message);

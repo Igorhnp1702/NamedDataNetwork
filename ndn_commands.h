@@ -42,7 +42,10 @@
 #define help_str "help"                     // user cmd help
 #define help_str_short "h"                  // short for help
 #define clear_str "clear"                   // partial cmd string
+#define cache_str "cache"
 #define clear_names_str_short "cn"          // short for clear names
+#define clear_cache_str_short "cc"
+#define show_cache_str_short "sc"
 
 #define _XOPEN_SOURCE 600 //!REMOVE BEFORE COMPILING
 
@@ -239,6 +242,8 @@ int check_ports(char *port_str);
 int is_valid_ip(const char *ip);
 
 int check_cache_size(char *size_str);
+
+void show_cache(objectQueue_t *queue_ptr);
 
 
 #endif

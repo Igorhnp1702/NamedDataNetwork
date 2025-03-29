@@ -255,6 +255,11 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
 
     while(strcmp(head->name, name2del) == 0){
 
+        
+        printf("The following interest entry will be removed:\n\n");
+        printf("Interface: [%s | %s]\n", head->interface_addr, head->interface_tcp);
+        printf("Object in question: %s\n", head->name);
+        printf("Current state: %s\n\n", head->state_str);
         aux2del = head;
         head = head->next;
         free_interest(&aux2del);
@@ -270,6 +275,11 @@ InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node
 
         if(strcmp(aux->next->name, name2del) == 0){
 
+           
+            printf("The following interest entry will be removed:\n\n");
+            printf("Interface: [%s | %s]\n", aux->next->interface_addr, aux->next->interface_tcp);
+            printf("Object in question: %s\n", aux->next->name);
+            printf("Current state: %s\n\n", aux->next->state_str);
             aux2del = aux->next;
             aux->next = aux->next->next;
             free_interest(&aux2del);
@@ -341,8 +351,7 @@ InterestEntry *update_interface_state(InterestEntry *head, int src_fd ,char *nam
 InterestEntry *clear_interest_table(InterestEntry *head) {
     
     if(head == NULL){
-
-        printf("The interest table is already empty\n");
+        
         return head;
     }
 

@@ -162,6 +162,6 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd);
 
 nodesLinkedlist_t *clearlist(nodesLinkedlist_t *head);
 
-int has_neighbors(nodesLinkedlist_t *internals_list);
+int has_neighbors(struct personal_node *self_node, int src_fd);
 
 #endif

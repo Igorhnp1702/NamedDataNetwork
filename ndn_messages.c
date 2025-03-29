@@ -57,20 +57,34 @@
     char reg_msg[69]; // 5(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
     memset(reg_msg, 0, 69*sizeof(char));
 
+    struct timeval timeout;
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
+    
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
     if(fd == -1) return NULL;
+
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
     memset(&srv_criteria, 0, sizeof(srv_criteria));
     srv_criteria.ai_family = AF_INET;
     srv_criteria.ai_socktype = SOCK_DGRAM;
 
     errflag = getaddrinfo(server_IP,server_UDP, &srv_criteria, &srv_result);
-    if(errflag != 0) return NULL;
+    if(errflag != 0){
+        close(fd);
+        return NULL;
+
+    } 
 
     sprintf(reg_msg, "%s %s %s %s\n", reg_str, net, node_IP, node_TCP);
 
     cnt = sendto(fd, reg_msg, strlen(reg_msg), 0, srv_result->ai_addr, srv_result->ai_addrlen); // Send reg
-    if(cnt == -1) return NULL;
+    if(cnt == -1){
+        printf("Error in node_reg: %s\n", strerror(errno));
+        close(fd);
+        return NULL;  
+    } 
 
     printf("Registration request sent to the node server: %s\n\n", reg_msg);
 
@@ -79,7 +93,8 @@
     addrlen_conf = sizeof(struct sockaddr_in);
     cnt = recvfrom(fd, buffer, strlen(okreg_str)+1, 0,(struct sockaddr *)&addr_conf, &addrlen_conf); // recieve okreg
     if(cnt == -1){
-        printf("Error in node_reg: Failed to receive confirmation from the server\n");
+        printf("Error in node_reg: %s\n", strerror(errno));
+        close(fd);
         return NULL;
     }
          
@@ -104,21 +119,36 @@
     // OKUNREG (5) + \0 (1) = 6
     char unreg_msg[71]; // 7(REG) + 1(space) + 3(net) + 1(space) + 50(IP) + 1(space) + 6(TCP) + 1(\n) + 1(\0) = 19 + strlen(IP)
     memset(unreg_msg, 0, 71*sizeof(char));
+    struct timeval timeout;
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
+    
 
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
     if(fd == -1) return NULL;
+
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
     memset(&srv_criteria, 0, sizeof(srv_criteria));
     srv_criteria.ai_family = AF_INET;
     srv_criteria.ai_socktype = SOCK_DGRAM;
 
     errflag = getaddrinfo(server_IP,server_UDP, &srv_criteria, &srv_result);
-    if(errflag != 0) return NULL;
+    if(errflag != 0){
+
+        close(fd);
+        return NULL;
+    } 
 
     sprintf(unreg_msg, "%s %s %s %s\n", unreg_str, net, node_IP, node_TCP);
 
     cnt = sendto(fd, unreg_msg, strlen(unreg_msg), 0, srv_result->ai_addr, srv_result->ai_addrlen);
-    if(cnt == -1) return NULL;
+    if(cnt == -1){
+
+        printf("Error in node_unreg: %s\n", strerror(errno));
+        close(fd);
+        return NULL;
+    } 
 
     printf("Unregistration request sent to the node server: %s\n\n", unreg_msg);
 
@@ -127,7 +157,9 @@
     addrlen_conf = sizeof(struct sockaddr_in);
     cnt = recvfrom(fd, buffer, strlen(okunreg_str)+1, 0,(struct sockaddr *)&addr_conf, &addrlen_conf); // retrieve the same 6 bytes you allocated for the response
     if(cnt == -1){
-        printf("Error in node_reg: Failed to receive confirmation from the server\n");
+
+        printf("Error in node_unreg: %s\n", strerror(errno));
+        close(fd);
         return NULL;
     } 
     
@@ -163,14 +195,18 @@ nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){
        
     char delim[2] = "\n";
     char *one_line;
-
+    struct timeval timeout;
+    timeout.tv_sec = 5;
+    timeout.tv_usec = 0;
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
+    
     if(fd == -1){
         return NULL;
         free(first_line);        
         free(inquiry);
         free_contact(&temp);
-    } 
+    }
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)); 
     
     memset(&srv_criteria, 0, sizeof(srv_criteria));
     srv_criteria.ai_family = AF_INET;
@@ -264,9 +300,9 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
     }
     struct sigaction act;
 
-    // struct timeval timeout;
-    // timeout.tv_sec = 5;  // 5-second timeout
-    // timeout.tv_usec = 0;
+    struct timeval timeout;
+    timeout.tv_sec = 5;  // 5-second timeout
+    timeout.tv_usec = 0;
     
 
     if (*fd == -1) {
@@ -276,7 +312,7 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
             free(buffer);
             return NULL;
         }
-        //setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+        setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         
         memset(&act, 0, sizeof(act));
         act.sa_handler = SIG_IGN;
@@ -913,7 +949,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
                 // We don't have the object...
 
-                if (has_neighbors(slf_node->internals_list)) {
+                if (has_neighbors(slf_node, src_node->node_fd)) {
                     
                     // ...and you have intern neighbors                    
 
@@ -984,30 +1020,24 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 
                 slf_node->storage_ptr = storageInsert(slf_node->storage_ptr, object_buff);                
                 slf_node->my_interests = RemoveSingleInterest(slf_node->my_interests, temp, object_buff, ANSWER, 1);
+                
 
             }
-            
-                        
+                                    
             // check interest table to see if I have to answer someone             
 
             if(search_interest(slf_node->interests_ptr, NULL, object_buff, ANSWER)){                                                    
 
                 send_object(object_buff, slf_node);                                                       
-               
-                // remove 'WAITING' and 'CLOSED' interfaces from the table
-                slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff);
+                               
             }
             else {
-                // if no one is waiting for the object
-                // place the object in cache
-
-                if(slf_node->queue_ptr->object_counter == slf_node->queue_ptr->queue_limit){
-
-                    slf_node->queue_ptr = deleteOld(slf_node->queue_ptr);
-                }
-                slf_node->queue_ptr = insertNew(slf_node->queue_ptr, object_buff);
-                printf("No interfaces waiting for 'OBJECT %s'\n", object_buff);
+                // if no one is waiting for the object                
+                
+                printf("No interfaces waiting for '%s'\n", object_buff);
             }
+            // remove 'WAITING' and 'CLOSED' interfaces from the table
+            slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff);
         }
         else{
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
@@ -1030,7 +1060,8 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             
             // check if all interfaces are closed for this object
 
-            if (!search_interest(slf_node->interests_ptr, NULL, object_buff, WAITING)){
+            if (!search_interest(slf_node->interests_ptr, NULL, object_buff, WAITING) && 
+                 search_interest(slf_node->interests_ptr, NULL, object_buff, CLOSED)){
                 // all interfaces for object_buff are closed
 
                 // send NOOBJECT

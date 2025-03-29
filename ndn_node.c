@@ -127,10 +127,7 @@ void reset_contact(nodeinfo_t **contact){
 
 struct personal_node *reset_personal(struct personal_node *personal){
            
-    personal->internals_list = clearlist(personal->internals_list);
-    personal->queue_ptr = clearQueue(personal->queue_ptr);
-    personal->queue_ptr = queueInit(personal->queue_ptr, personal->cache_limit);
-    personal->storage_ptr = storageClear(personal->storage_ptr);
+    personal->internals_list = clearlist(personal->internals_list);           
     personal->interests_ptr = clear_interest_table(personal->interests_ptr);
     personal->my_interests = clear_interest_table(personal->my_interests);
 
@@ -314,6 +311,17 @@ nodesLinkedlist_t *clearlist(nodesLinkedlist_t* head){
     return head;
 }
 
-int has_neighbors(nodesLinkedlist_t *internals_list) {
-    return (internals_list != NULL);
+int has_neighbors(struct personal_node *self_node, int src_fd) {
+    
+    int neighbor_flag = 0;
+
+    nodesLinkedlist_t *aux = self_node->internals_list;
+
+    while(aux != NULL){
+
+        if(aux->node->node_fd != src_fd) return ++neighbor_flag;
+        aux = aux->next;
+    }
+    
+    return neighbor_flag;
 }

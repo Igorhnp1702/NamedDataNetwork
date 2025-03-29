@@ -113,7 +113,11 @@ void select_cmd(struct personal_node *personal, char *input){
         else if(sscanf(input, "%*s %3s", net_num) == 1){
             
             printf("Executing %s...\n\n", join_str);
-            join(personal, net_num); //join a network and register the personal node in the server
+
+            if(join(personal, net_num) == 1){ //join a network and register the personal node in the server
+
+                leave(personal);
+            }
             return;
         }                        
         else{
@@ -247,29 +251,6 @@ void select_cmd(struct personal_node *personal, char *input){
 
     }// else if st
 
-    else if(strcmp(cmd_str1, show_str) == 0){
-        
-        if(strcmp(cmd_str2, topology_str) == 0){
-            printf("Executing %s %s...\n\n", show_str, topology_str);
-            show_topology(personal);  // show topology of the personal node
-            return;
-        }
-
-        if(strcmp(cmd_str2, names_str) == 0){
-            printf("Executing %s %s...\n\n", show_str, names_str);
-            show_names(personal->storage_ptr); // show names of the personal node
-            return;
-        }
-
-        if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
-
-            printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
-            show_interest_table(personal->interests_ptr); // show the interest table
-            return;
-        }
-        
-    }// else if show commands long
-
     else if(strcmp(cmd_str1, show_names_str_short) == 0){
         
         printf("Executing %s...\n\n", cmd_str1);
@@ -278,15 +259,13 @@ void select_cmd(struct personal_node *personal, char *input){
 
     }//else if sn
 
-
-    
-    else if(strcmp(cmd_str1, clear_names_str_short) == 0){
-
+    else if(strcmp(cmd_str1, show_cache_str_short) == 0){
+        
         printf("Executing %s...\n\n", cmd_str1);
-        personal->storage_ptr = storageClear(personal->storage_ptr);  // clear the contents table of the personal node            
+        show_cache(personal->queue_ptr); // show names of the personal node
         return;
 
-    }// else if cn
+    }//else if sn
 
     else if(strcmp(cmd_str1, show_interest_table_str_short) == 0){
 
@@ -301,9 +280,68 @@ void select_cmd(struct personal_node *personal, char *input){
         return;
 
     }//else if si
-    
+
+    else if(strcmp(cmd_str1, show_str) == 0){
         
+        if(strcmp(cmd_str2, topology_str) == 0){
+            printf("Executing %s %s...\n\n", show_str, topology_str);
+            show_topology(personal);  // show topology of the personal node
+            return;
+        }
+
+        if(strcmp(cmd_str2, names_str) == 0){
+            printf("Executing %s %s...\n\n", show_str, names_str);
+            show_names(personal->storage_ptr); // show names of the personal node
+            return;
+        }
+
+        if(strcmp(cmd_str2, cache_str) == 0){
+            printf("Executing %s %s...\n\n", show_str, cache_str);
+            show_cache(personal->queue_ptr); // show names of the personal node
+            return;
+        }
+
+        if(strcmp(cmd_str2, interest_str) == 0 && strcmp(cmd_str3, table_str) == 0){
+
+            printf("Executing %s %s %s...\n\n", show_str, interest_str, table_str);
+            show_interest_table(personal->interests_ptr); // show the interest table
+            return;
+        }
+        
+    }// else if show commands long
+
+    else if(strcmp(cmd_str1, clear_cache_str_short) == 0){
+
+        printf("Executing %s...\n\n", cmd_str1);
+        personal->queue_ptr = clearQueue(personal->queue_ptr);  // clear the contents table of the personal node            
+        return;
+
+    }// else if cn
     
+    else if(strcmp(cmd_str1, clear_names_str_short) == 0){
+
+        printf("Executing %s...\n\n", cmd_str1);
+        personal->storage_ptr = storageClear(personal->storage_ptr);  // clear the contents table of the personal node            
+        return;
+
+    }// else if cn
+
+    else if(strcmp(cmd_str1, clear_str) == 0){
+                
+        if(strcmp(cmd_str2, names_str) == 0){
+            printf("Executing %s %s...\n\n", clear_str, names_str);
+            personal->storage_ptr = storageClear(personal->storage_ptr);  // clear the contents table of the personal node            
+            return;
+        }
+
+        if(strcmp(cmd_str2, cache_str) == 0){
+            printf("Executing %s %s...\n\n", clear_str, cache_str);
+            personal->queue_ptr = clearQueue(personal->queue_ptr);  // clear the contents table of the personal node            
+            return;
+        }
+               
+    }// else if clear commands long
+                
     else if(strcmp(cmd_str1, leave_str) == 0 || strcmp(cmd_str1, leave_str_short) == 0){
 
         //remove the personal node from the network
@@ -328,9 +366,7 @@ void select_cmd(struct personal_node *personal, char *input){
         printf("Executing %s...\n\n", exit_str);
         
         personal->exit_flag = 1;        
-        
-        
-
+                
     }//else if exit
 
     else if(strcmp(cmd_str1, help_str) == 0 || strcmp(cmd_str1, help_str_short) == 0) {
@@ -406,9 +442,7 @@ int join(struct personal_node *personal, char *net) {
             return ++success_flag;
         }
     }
-
-    strcpy(personal->personal_net,net);
-
+    
     // try to register the node
     return_msg = node_reg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, net);
     if(return_msg == NULL){
@@ -417,6 +451,7 @@ int join(struct personal_node *personal, char *net) {
         nodeslist = clearlist(nodeslist);        
         return ++success_flag;
     }
+    strcpy(personal->personal_net,net);
     personal->join_flag = 1;
              
     nodeslist = clearlist(nodeslist);
@@ -616,6 +651,25 @@ void show_names(storageList_t *storage_ptr){
     return;
 }
 
+void show_cache(objectQueue_t *queue_ptr){
+
+    if(queue_ptr->head == NULL){
+        printf("No names to show inside the cache\n");
+        return;
+    }
+
+    int counter = 1;
+    queueBlock_t *aux = queue_ptr->head;
+
+    printf("Showing names in cache\n\n");
+    while(aux != NULL){
+        printf("Name %d: %s\n", counter, aux->name);
+        counter++;
+        aux = aux->next;
+    }
+    return;
+}
+
 
 int show_topology(struct personal_node *personal){
     
@@ -734,8 +788,10 @@ void help_menu() {
         printf("retrieve (r) [name]\n");
         printf("show topology (st)\n");
         printf("show names (sn)\n");
+        printf("show cache (sc)");
         printf("show interest table (si)\n");        
         printf("clear names (cn)\n");
+        printf("clear cache (cc)");
         printf("leave (l)\n");
         printf("exit (x)\n");
         printf("\n----------------------------------------------------------------------------------------\n\n");

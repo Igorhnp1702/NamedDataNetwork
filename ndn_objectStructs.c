@@ -92,7 +92,7 @@ objectQueue_t *deleteOld(objectQueue_t *queue_ptr){
 int queueSearch(objectQueue_t *queue_ptr, char *string){
 
     if((queue_ptr->tail == NULL) && (queue_ptr->head == NULL)){
-        printf("Failed to find %s in cache because it's empty\n\n", string);
+        printf("Failed to find '%s' in cache because it's empty\n\n", string);
         return 0;
     }
 
@@ -107,7 +107,7 @@ int queueSearch(objectQueue_t *queue_ptr, char *string){
         }
         aux = aux->next;
     }
-    printf("Failed to find %s in cache\n\n", string);
+    printf("Failed to find '%s' in cache\n\n", string);
     return 0;
 }
 
@@ -279,7 +279,7 @@ storageList_t *storageDelete(storageList_t *head, char *object){
 int storageSearch(storageList_t *head, char *object){
 
     if(head == NULL){
-        printf("Object storage is empty\n\n");
+        printf("Failed to find '%s' in object storage because it's empty\n\n", object);
         return 0;
     }
     storageList_t *aux = head;
@@ -292,7 +292,7 @@ int storageSearch(storageList_t *head, char *object){
         }
         aux = aux->next;
     }
-    printf("Failed to find %s in the object storage\n\n", object);
+    printf("Failed to find '%s' in the object storage\n\n", object);
     return 0;
 
 }
