@@ -219,8 +219,7 @@ nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
 
     aux->next = new_block;
     if(strcmp(new_node->node_addr,"") == 0) return head;
-    
-    printf("\nSuccessfully inserted [%s | %s] in a list\n", new_node->node_addr, new_node->tcp_port);
+        
     return head;
 
 }
@@ -228,7 +227,7 @@ nodesLinkedlist_t *insertnode(nodesLinkedlist_t *head, nodeinfo_t *new_node){
 nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 
     if(head == NULL){
-		printf("\nThe list is empty\n\n");
+	
 		return head;
 	}
 
@@ -236,48 +235,32 @@ nodesLinkedlist_t *removenode(nodesLinkedlist_t *head, int old_fd){
 	listptr = head;
 
 	if(head->node->node_fd == old_fd){ //if the head has the desired node
-
-		if((strcmp(head->node->node_addr, "") == 0) || 
-           (strcmp(head->node->node_addr, "") == 0)){
-        
-            // avoid the print
-        }
-        else printf("\n[%s | %s] was removed from the internals list\n\n", head->node->node_addr, head->node->tcp_port);
+		
         aux = head;
 		head = head->next;
         close(aux->node->node_fd);
 		free_contact(&(aux->node));		
 		free(aux);		
-		if(head == NULL){
-			printf("\nThe list of internals is now empty\n\n");
-		}
-
 		return head;			
 	}
 	
 	while(listptr != NULL){
 
 		if(listptr->next == NULL && listptr->node->node_fd != old_fd){
-			printf("\nThe name was not found\n\n");
+			
 			return head;
 		}
 		else if(listptr->node->node_fd == old_fd){ //first or last node, and it contains the fd
-
-			printf("\n[%s | %s] was removed from the internals list\n\n", listptr->node->node_addr, listptr->node->tcp_port);
+			
             aux = listptr;
 			listptr = listptr->next;
             close(aux->node->node_fd);			
 			free_contact(&(aux->node));
 			free(aux);
 			
-			if(listptr == NULL){
-				printf("\nThe list of internals is now empty\n\n");
-			}
-			return head;
 		}		
 		else if(listptr->next->node->node_fd == old_fd){
-			
-			printf("\n[%s | %s] was removed from the internals list\n\n", listptr->next->node->node_addr, listptr->next->node->tcp_port);
+						
             aux = listptr->next;
 			listptr->next = listptr->next->next;
             close(aux->node->node_fd);			

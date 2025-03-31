@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 // networking libraries
 #include <netdb.h>
@@ -30,46 +31,54 @@
 
 /*------------------------------------------Argument checking functions------------------------------------------*/
 
-int is_valid_ip(const char *ip) {
+int is_valid_ip(const char *ip) { // 1 means success
+
+    if(strlen(ip) > 15) return 0;
     struct sockaddr_in sa;
     return inet_pton(AF_INET, ip, &(sa.sin_addr)) == 1;  // IPv4 check
 }
 
-int check_net(char *net){
+int check_net(char *net){ // 0 means success
     
     int success_flag = 0;
     
     if(strlen(net) != 3){
-        
-        printf("Invalid net\n");
+                
         return ++success_flag;
     }
+    while(*net){
 
-    if(0 <= atoi(net) && atoi(net) <= 999) return success_flag;
-    else{
-        printf("Invalid net\n");
-        return ++success_flag;
+        if(*net < '0' || *net > '9'){        
+            return ++success_flag;
+        }
+        net++; 
     }
+    return success_flag;
+        
 }//check_net()
 
-int check_ports(char *port_str){
+int check_ports(char *port_str){ // 0 means success
     
     int length = strlen(port_str), flag = 0;
     
     if(length > 5) return ++flag;
-    
-    if(atoi(port_str) < 0 || 65535 < atoi(port_str) ) return ++flag;
-    
-    else return flag;
+
+    while(*port_str){
+
+        if(*port_str < '0' || *port_str > '9'){        
+            return ++flag;
+        }
+        port_str++; 
+    }            
+    return flag;
 }//check_ports()
 
 
-int check_name(char *name){
+int check_name(char *name){ // 0 means success
 
     int flag = 0; //success flag
 
-    if(strlen(name) > 100){
-        printf("Object size is too big. Object ignored\n");
+    if(strlen(name) > 100){        
         return ++flag;
     }
     else return flag;
@@ -77,9 +86,13 @@ int check_name(char *name){
 
 int check_cache_size(char *size_str){
 
-    if((atoi(size_str)) <= 0){
-        printf("Cache size has to be a positive number");
-        return 1;
+    if(strlen(size_str) > 9) return 1;
+    while(*size_str){
+
+        if(*size_str < '0' || *size_str > '9'){        
+            return 1;
+        }
+        size_str++; 
     }
     return 0;
 }
@@ -88,9 +101,9 @@ int check_cache_size(char *size_str){
 
 void select_cmd(struct personal_node *personal, char *input){ 
     
-    char net_num[MAX_NET_CHARS];      memset(net_num, 0, sizeof(net_num));     // network number passed in the commands    
-    char tcp[MAX_TCP_UDP_CHARS];      memset(tcp, 0, sizeof(tcp));             // a tcp port passed in the commands
-    char udp[MAX_TCP_UDP_CHARS];      memset(udp, 0, sizeof(udp));             // the udp port of the node server passed in the commands    
+    char net_num[MAX_NET_CHARS + 1];      memset(net_num, 0, sizeof(net_num));     // network number passed in the commands    
+    char tcp[MAX_TCP_UDP_CHARS + 1];      memset(tcp, 0, sizeof(tcp));             // a tcp port passed in the commands
+    char udp[MAX_TCP_UDP_CHARS + 1];      memset(udp, 0, sizeof(udp));             // the udp port of the node server passed in the commands    
 
     char cmd_str1[MAX_MSG_CMD_SIZE];    memset(cmd_str1, 0, sizeof(cmd_str1));   // should be enough for the first string of the command
     char cmd_str2[MAX_MSG_CMD_SIZE];    memset(cmd_str2, 0, sizeof(cmd_str2));   // should be enough for the first string of the command
@@ -110,7 +123,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }       
-        else if(sscanf(input, "%*s %3s", net_num) == 1){
+        else if(sscanf(input, "%*s %4s", net_num) == 1){
             
             printf("Executing %s...\n\n", join_str);
 
@@ -132,7 +145,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }
-        else if(sscanf(input, "%*s %15s %5s", address, tcp) == 2){
+        else if(sscanf(input, "%*s %16s %6s", address, tcp) == 2){
             
             printf("Executing %s %s...\n\n", direct_str, join_str);
             djoin(personal, address, tcp); // join a network without registration
@@ -150,7 +163,7 @@ void select_cmd(struct personal_node *personal, char *input){
             printf("The node already belongs to a network. Command ignored\n");
             return;
         }
-        else if(sscanf(input, "%*s %*s %15s %5s", address, tcp) == 2){
+        else if(sscanf(input, "%*s %*s %16s %6s", address, tcp) == 2){
             
             printf("Executing %s %s...\n\n", direct_str, join_str);
             djoin(personal, address, tcp); // join a network without registration
@@ -164,9 +177,15 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, create_str) == 0 || strcmp(cmd_str1, create_str_short) == 0){
 
-        if(sscanf(input, "%*s %100s", object_string) == 1){
+        if(sscanf(input, "%*s %101s", object_string) == 1){
             
             printf("Executing %s...\n\n", create_str);
+
+            if(check_name(object_string) == 1){
+                printf("Error in create: The name to be created is too long. Command ignored\n");
+                return;
+            }
+
             personal->storage_ptr = create(personal->storage_ptr, object_string); // create and store a content inside the personal node           
             return; 
         }
@@ -178,9 +197,15 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, delete_str) == 0 || strcmp(cmd_str1, delete_str_short) == 0){
 
-        if(sscanf(input, "%*s %100s", object_string) == 1){
+        if(sscanf(input, "%*s %101s", object_string) == 1){
             
             printf("Executing %s...\n\n", delete_str);
+
+            if(check_name(object_string) == 1){
+                printf("Error in delete: The name to be deleted is too long. Command ignored\n");
+                return;
+            }
+
             personal->storage_ptr = storageDelete(personal->storage_ptr, object_string); // delete a content inside the personal node
             return;            
         }
@@ -192,9 +217,15 @@ void select_cmd(struct personal_node *personal, char *input){
 
     else if(strcmp(cmd_str1, retrieve_str) == 0 || strcmp(cmd_str1, retrieve_str_short) == 0){                       
         
-        if(sscanf(input, "%*s %100s", object_string) == 1){            
+        if(sscanf(input, "%*s %101s", object_string) == 1){            
+            
             
             printf("Executing %s...\n\n", retrieve_str);
+
+            if(check_name(object_string) == 1){
+                printf("Error in retrieve: The name to be retrieved is too long. Command ignored\n");
+                return;
+            }
             
             // VER SE TENHO O OBJETO EM CACHE 
             // SE NAO TIVER SEND INTERST 
@@ -419,15 +450,24 @@ int join(struct personal_node *personal, char *net) {
         return ++success_flag;
     }            
 
-    if((strcmp(nodeslist->node->node_addr, "")) != 0){ // if the network is not empty, pick the first node
-                
-        strcpy(picked_ip, nodeslist->node->node_addr);
-        strcpy(picked_tcp, nodeslist->node->tcp_port);
-                                            
-        // try to connect
+    if(((strcmp(nodeslist->node->node_addr, "")) != 0) && ((strcmp(nodeslist->node->tcp_port, "")) != 0)){ // if the network is not empty, pick the first node
+        
+        if(((is_valid_ip(nodeslist->node->node_addr)) == 1) && ((check_ports(nodeslist->node->tcp_port)) == 0)){
 
-        if(djoin(personal, picked_ip, picked_tcp) == 1) {
-            printf("Error in join: Failed to connect to a node in the desired network\n");
+        
+            strcpy(picked_ip, nodeslist->node->node_addr);
+            strcpy(picked_tcp, nodeslist->node->tcp_port);
+                                                
+            // try to connect
+
+            if(djoin(personal, picked_ip, picked_tcp) == 1) {
+                printf("Error in join: Failed to connect to a node in the desired network\n");
+                nodeslist = clearlist(nodeslist);
+                return ++success_flag;
+            }
+        }else{
+            printf("Error in join: Invalid node found in NODESLIST %s", net);
+            nodeslist = clearlist(nodeslist);
             return ++success_flag;
         }
         
@@ -439,6 +479,7 @@ int join(struct personal_node *personal, char *net) {
         memset(personal->personal_net, 0, 4*sizeof(char));
         if(djoin(personal, "0.0.0.0", personal->personal_tcp) == 1) {
             printf("Error in join: Failed to enter the network\n");
+            nodeslist = clearlist(nodeslist);
             return ++success_flag;
         }
     }
@@ -485,19 +526,27 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
     }
     
     int errflag;                  // flag to check for errors in function calls    
-    struct addrinfo *srv_result;  // list of address structures
+    struct addrinfo *srv_result;  // list of address structures    
     struct addrinfo srv_criteria; // necessary criteria to select the address structures from the list
-    // ssize_t nread;               // number of bytes read from a read operation
-    // ssize_t nleft;               // number of bytes left to fill the buffer capacity
-    //char *scan_ptr;
+    struct sigaction act;
     char msg_type[MAX_MSG_CMD_SIZE]; memset(msg_type, 0, MAX_MSG_CMD_SIZE);
     char *return_msg;
     //nleft = MAX_MSG_LENGTH;
 
-    // struct timeval timeout;
-    // timeout.tv_sec = 5;  // 5-second timeout
-    // timeout.tv_usec = 0;
+    act.sa_handler = SIG_IGN;
+    memset(&act, 0, sizeof(act));
     
+
+    if(sigaction(SIGPIPE, &act, NULL) == -1){
+        printf("Error in sigaction()\n");
+        printf("This node cannot belong to a network.\n");
+        printf("Because of this, the process will be terminated\n");
+        close(personal->server_fd);
+        personal->server_fd = -1;  
+        personal->exit_flag = 1;               
+        return 1;
+    }
+        
     personal->server_fd = socket(AF_INET, SOCK_STREAM, 0); // personal server socket for the intern nodes
     if (personal->server_fd < 0) {        
         printf("Error in socket()\n");
@@ -507,7 +556,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         // free and close everything
         return 1;        
     }
-    //setsockopt(personal->server_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
     FD_SET(personal->server_fd, &personal->crr_scks);           // add server socket to FD set
 
     personal->max_fd = personal->server_fd;
@@ -588,7 +637,7 @@ int djoin(struct personal_node *personal, char *connectIP, char *connectTCP){
         return 1;
     }
     else{
-        printf("Sending %s %s %s\n\n", entry_str, personal->personal_addr, personal->personal_tcp);       
+        printf("Sending %s\n\n", entry_str);       
         
         //Sends ENTRY message
         return_msg = send_entry(&(personal->extern_node->node_fd), personal->personal_addr, personal->personal_tcp, 
@@ -674,7 +723,7 @@ void show_cache(objectQueue_t *queue_ptr){
 int show_topology(struct personal_node *personal){
     
     int success_flag = 0;
-    int printed_interns = 0;
+    int known_neighbors = 0, unknown_neighbors = 0, total_neighbors = 0;
 
     nodesLinkedlist_t *aux;
 
@@ -705,7 +754,7 @@ int show_topology(struct personal_node *personal){
     personal->extern_node->tcp_port);
                                     
     
-    if (strcmp(personal->backup_addr, "") != 0) {
+    if ((strcmp(personal->backup_addr, "") != 0) && (strcmp(personal->backup_tcp, "") != 0)) {
         printf("\n\nBackup neighbor's info: \n");                
         printf("Adress: %s\nPort: %s\n\n",                  
         personal->backup_addr, 
@@ -727,14 +776,25 @@ int show_topology(struct personal_node *personal){
         aux = personal->internals_list;
         while(aux != NULL){
                             
-            printf("Adress: %s\nPort: %s\n\n",                                    
-                aux->node->node_addr,
-                aux->node->tcp_port);
+            if((strcmp(aux->node->node_addr, "") != 0) && (strcmp(aux->node->tcp_port, "") != 0)){
 
-            printed_interns++;                        
+                printf("Adress: %s\nPort: %s\n\n",                                    
+                    aux->node->node_addr,
+                    aux->node->tcp_port);
+    
+                known_neighbors++;
+                total_neighbors++;
+            }else{                
+                unknown_neighbors++;
+                printf("%d unknown neighbor(s) detected\n\n", unknown_neighbors);
+                total_neighbors++;
+            }
+                                    
             aux = aux->next;
-        }
-        printf("Number of interns: %d\n", printed_interns);
+        }        
+        printf("\nNumber of known interns: %d\n", known_neighbors);
+        printf("Number of unknown interns: %d\n", unknown_neighbors);
+        printf("Number of total interns: %d\n", total_neighbors);
     }
         
     return success_flag;
@@ -751,11 +811,10 @@ int leave(struct personal_node *personal) {
             return_msg = node_unreg(personal->udp_address, personal->udp_port, personal->personal_addr, personal->personal_tcp, personal->personal_net);
             if (return_msg == NULL){
 
-                printf("Error in leave: Failed to unregister the node. The connections are still open.\n");
-                return 1;
+                printf("Error in leave: Failed to unregister the node. Leaving anyway\n");                
 
             }
-            free(return_msg);
+            else free(return_msg);
             // check return value of node_unreg
             personal->join_flag = 0;
             strcpy(personal->personal_net, "");
@@ -777,23 +836,27 @@ int leave(struct personal_node *personal) {
     return 0;
 }//leave
 
-void help_menu() {
+void help_menu(void) {
+
         printf("--------------------------------------------HELP MENU-------------------------------------\n\n");
-        printf("To use the application, insert one of the following commands:\n");
-        printf("Note: curved brackets => valid abreviations; square brackets => arguments\n\n");
+        printf("To use the application, insert one of the following commands:\n\n");        
         printf("join (j) [desired network] \n");
         printf("direct join (dj) [connect IPv4 address] [connect TCP port]\n");        
         printf("create (c) [name]\n");
         printf("delete (dl) [name]\n");
         printf("retrieve (r) [name]\n");
         printf("show topology (st)\n");
-        printf("show names (sn)\n");
-        printf("show cache (sc)");
-        printf("show interest table (si)\n");        
+        printf("show interest table (si)\n");
+        printf("show names (sn)\n");                
         printf("clear names (cn)\n");
-        printf("clear cache (cc)");
+        printf("show cache (sc)\n");
+        printf("clear cache (cc)\n");
         printf("leave (l)\n");
         printf("exit (x)\n");
+        printf("\nA few notes:\n\n");
+        printf("-curved brackets => valid abreviations;\n");
+        printf("-square brackets => command arguments;\n");
+        printf("-all the commands and their arguments are case sensitive;\n\n");
         printf("\n----------------------------------------------------------------------------------------\n\n");
         return;
 }//help_menu

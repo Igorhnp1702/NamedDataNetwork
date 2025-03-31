@@ -62,7 +62,11 @@
     timeout.tv_usec = 0;
     
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
-    if(fd == -1) return NULL;
+    if(fd == -1){
+        
+        free(buffer);
+        return NULL;
+    } 
 
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
@@ -73,6 +77,7 @@
     errflag = getaddrinfo(server_IP,server_UDP, &srv_criteria, &srv_result);
     if(errflag != 0){
         close(fd);
+        free(buffer);
         return NULL;
 
     } 
@@ -82,6 +87,7 @@
     cnt = sendto(fd, reg_msg, strlen(reg_msg), 0, srv_result->ai_addr, srv_result->ai_addrlen); // Send reg
     if(cnt == -1){
         printf("Error in node_reg: %s\n", strerror(errno));
+        free(buffer);
         close(fd);
         return NULL;  
     } 
@@ -95,6 +101,7 @@
     if(cnt == -1){
         printf("Error in node_reg: %s\n", strerror(errno));
         close(fd);
+        free(buffer);
         return NULL;
     }
          
@@ -125,7 +132,11 @@
     
 
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
-    if(fd == -1) return NULL;
+    if(fd == -1){
+
+        free(buffer);
+        return NULL;
+    } 
 
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
@@ -136,6 +147,7 @@
     errflag = getaddrinfo(server_IP,server_UDP, &srv_criteria, &srv_result);
     if(errflag != 0){
 
+        free(buffer);
         close(fd);
         return NULL;
     } 
@@ -143,9 +155,10 @@
     sprintf(unreg_msg, "%s %s %s %s\n", unreg_str, net, node_IP, node_TCP);
 
     cnt = sendto(fd, unreg_msg, strlen(unreg_msg), 0, srv_result->ai_addr, srv_result->ai_addrlen);
-    if(cnt == -1){
+    if(cnt <= 0){
 
         printf("Error in node_unreg: %s\n", strerror(errno));
+        free(buffer);
         close(fd);
         return NULL;
     } 
@@ -156,10 +169,11 @@
 
     addrlen_conf = sizeof(struct sockaddr_in);
     cnt = recvfrom(fd, buffer, strlen(okunreg_str)+1, 0,(struct sockaddr *)&addr_conf, &addrlen_conf); // retrieve the same 6 bytes you allocated for the response
-    if(cnt == -1){
+    if(cnt <= 0){
 
         printf("Error in node_unreg: %s\n", strerror(errno));
         close(fd);
+        free(buffer);
         return NULL;
     } 
     
@@ -201,8 +215,7 @@ nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){
     fd = socket(AF_INET, SOCK_DGRAM, 0) ;
     
     if(fd == -1){
-        return NULL;
-        free(first_line);        
+        return NULL;             
         free(inquiry);
         free_contact(&temp);
     }
@@ -220,8 +233,7 @@ nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){
     cnt = sendto(fd, inquiry, strlen(inquiry), 0, srv_result->ai_addr, srv_result->ai_addrlen);
     if(cnt == -1){
 
-        close(fd);
-        free(first_line);                
+        close(fd);                    
         free(inquiry);
         free_contact(&temp);
         return NULL;
@@ -233,12 +245,11 @@ nodesLinkedlist_t *server_inquiry(char *server_IP, char *server_UDP, char *net){
 
     addrlen_conf = sizeof(struct sockaddr_in);
     
-    cnt = recvfrom(fd, nodeslist_bff, MAX_NODESLIST, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
+    cnt = recvfrom(fd, nodeslist_bff, MAX_NODESLIST - 1, 0,(struct sockaddr *)&addr_conf, &addrlen_conf);
     
     if(cnt == -1){
        
-        printf("Failed to get the list of nodes from the server\n");
-        
+        printf("Error in server_inquiry: %s\n", strerror(errno));          
         close(fd);               
         free(inquiry);
         free_contact(&temp);
@@ -303,6 +314,17 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
     struct timeval timeout;
     timeout.tv_sec = 5;  // 5-second timeout
     timeout.tv_usec = 0;
+
+    memset(&act, 0, sizeof(act));
+    act.sa_handler = SIG_IGN;
+
+    if(sigaction(SIGPIPE, &act, NULL) == -1){
+        printf("Send entry: Error in sigaction().\n");
+        close(*fd);
+        *fd = -1;
+        free(buffer);            
+        return NULL;
+    }
     
 
     if (*fd == -1) {
@@ -314,16 +336,7 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
         }
         setsockopt(*fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
         
-        memset(&act, 0, sizeof(act));
-        act.sa_handler = SIG_IGN;
-
-        if(sigaction(SIGPIPE, &act, NULL) == -1){
-            printf("Send entry: Error in sigaction().\n");
-            close(*fd);
-            *fd = -1;
-            free(buffer);            
-            return NULL;
-        }
+        
 
         memset(&srv_criteria, 0, sizeof(srv_criteria));
         srv_criteria.ai_family = AF_INET;       //IPv4 address family
@@ -361,7 +374,7 @@ char *send_entry(int *fd, char *mynode_ip, char *mynode_tcp, char *dest_ip, char
     while(nleft > 0){
         nwritten = write(*fd, ptr, nleft);
         if(nwritten <= 0){
-            printf("Send entry: Error in write\n");
+            printf("Error in send entry: %s\n", strerror(errno));
             close(*fd);
             *fd = -1;
             free(buffer);
@@ -898,7 +911,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
     char ip_cmd[MAX_ADDRESS_SIZE];      //ip address of msg
     memset(ip_cmd, 0, sizeof(ip_cmd));
 
-    char object_buff[MAX_NAME_LENGTH];  //object of msg
+    char object_buff[MAX_NAME_LENGTH + 1];  //object of msg
     memset(object_buff, 0, sizeof(object_buff));
 
     char snd_msg[MAX_MSG_LENGTH];       //buffer to send a response 
@@ -928,7 +941,15 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     if(strcmp(cmd, interest_msg_str) == 0){
 
-        if(sscanf(msg, "%*s %100s",object_buff) == 1){
+        if(sscanf(msg, "%*s %101s",object_buff) == 1){
+
+            if(check_name(object_buff) == 1){
+
+                //object is too long
+
+                printf("Error in parse_tcp: The object related message received has a name that is too long. Message ignored\n");
+                return ++fail_flag;
+            }
 
             printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port); 
             printf("%s\n\n", msg);
@@ -990,7 +1011,15 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     else if(strcmp(cmd, object_str) == 0){
 
-        if(sscanf(msg, "%*s %100s", object_buff) == 1){
+        if(sscanf(msg, "%*s %101s", object_buff) == 1){
+
+            if(check_name(object_buff) == 1){
+
+                //object is too long
+
+                printf("Error in parse_tcp: The object related message received has a name that is too long. Message ignored\n");
+                return ++fail_flag;
+            }
             
             printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port);
             printf("%s\n\n", msg);
@@ -1037,7 +1066,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 printf("No interfaces waiting for '%s'\n", object_buff);
             }
             // remove 'WAITING' and 'CLOSED' interfaces from the table
-            slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff);
+            slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff, 0);
         }
         else{
             printf("Error in parse_tcp: Failed to read arguments of %s\n", cmd);
@@ -1048,7 +1077,15 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
 
     else if(strcmp(cmd, noobject_str) == 0){
 
-        if(sscanf(msg, "%*s %100s",object_buff) == 1){
+        if(sscanf(msg, "%*s %101s",object_buff) == 1){
+
+            if(check_name(object_buff) == 1){
+
+                //object is too long
+
+                printf("Error in parse_tcp: The object related message received has a name that is too long. Message ignored\n");
+                return ++fail_flag;
+            }
             
             printf("Message received from [%s | %s]:\n", src_node->node_addr, src_node->tcp_port);
             printf("%s\n\n", msg);
@@ -1068,7 +1105,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                 send_noobject(object_buff, slf_node);
 
                 // remove interest from table                                
-                slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff);
+                slf_node->interests_ptr = remove_interests(slf_node->interests_ptr, object_buff, 0);
 
                 // if im waiting for the object, remove object from my_interests
             
@@ -1096,35 +1133,35 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
         if (sscanf(msg, "%*s %15s %5s", ip_cmd, tcp_cmd) == 2){
                     
             if(is_valid_ip(ip_cmd) != 1){
-                printf("Error in parse_tcp: ENTRY message contains invalid IPv4 address. Connection closed\n");                
-                slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
-                slf_node->n_internals--;
-                close(src_node->node_fd);
+                printf("Error in parse_tcp: ENTRY message contains invalid IPv4 address. Connection closed\n");
                 FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                close(src_node->node_fd);                                
+                slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                slf_node->n_internals--;                
                 free_contact(&temp);        
-                return ++fail_flag;
+                return -1;
             }
 
             if(check_ports(tcp_cmd) == 1){
-                printf("Error in parse_tcp: ENTRY message contains invalid TCP port. Connection closed\n");                
+                printf("Error in parse_tcp: ENTRY message contains invalid TCP port. Connection closed\n");
+                FD_CLR(src_node->node_fd, &(slf_node->crr_scks)); 
+                close(src_node->node_fd);                               
                 slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
-                slf_node->n_internals--;
-                close(src_node->node_fd);
-                FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                slf_node->n_internals--;                
                 free_contact(&temp);        
-                return ++fail_flag;
+                return -1;
             }
 
             if ((strcmp(ip_cmd, slf_node->personal_addr) == 0) &&
                 (strcmp(tcp_cmd, slf_node->personal_tcp) == 0)) {
 
                 printf("Error in parse_tcp: ENTRY message contains my information. Connection closed\n");
-                slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
-                slf_node->n_internals--;
-                close(src_node->node_fd);
                 FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                close(src_node->node_fd);                
+                slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                slf_node->n_internals--;                
                 free_contact(&temp);
-                return ++fail_flag;    
+                return -1;    
 
             }
             
@@ -1132,7 +1169,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             printf("%s\n\n", msg);
 
             if ((strcmp(slf_node->extern_node->node_addr, slf_node->personal_addr) == 0)
-                && (strcmp(slf_node->extern_node->tcp_port, slf_node->personal_tcp) == 0)) {  //I was alone in the network. Answer with SAFE, followed by an ENTRY
+                && (strcmp(slf_node->extern_node->tcp_port, slf_node->personal_tcp) == 0)) {  //I was alone in the network. Answer with ENTRY, followed by SAFE
 
                 //src_node is the new intern node
                 
@@ -1141,7 +1178,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                                                         
                 printf("I'm not alone anymore\n\n");
 
-                printf("Sending %s %s %s\n\n", entry_str, slf_node->personal_addr, slf_node->personal_tcp);
+                printf("Sending %s\n\n", entry_str);
                 
                 return_msg = send_entry(&(src_node->node_fd), slf_node->personal_addr, slf_node->personal_tcp,
                                         ip_cmd, tcp_cmd);
@@ -1179,14 +1216,14 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                                                    
                 }
                 else{
-                    printf("Error in parse_tcp.\n");
-                    printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
+                    printf("Error in parse_tcp: Failed to send SAFE message. Connection closed\n");                    
+                    FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                    close(src_node->node_fd);
+                    free_contact(&temp);
                     slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
                     slf_node->n_internals--;
-                    close(src_node->node_fd);
-                    FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
-                    free_contact(&temp);
-                    return ++fail_flag;                        
+                    
+                    return -1;                        
                 }
             
                 strcpy(slf_node->extern_node->tcp_port, tcp_cmd);
@@ -1198,7 +1235,28 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
             else {
                 
                 strcpy(src_node->tcp_port, tcp_cmd);
-                strcpy(src_node->node_addr, ip_cmd);                
+                strcpy(src_node->node_addr, ip_cmd);
+                
+                // check the list to see if this is a connection with duplicated information
+
+                aux = slf_node->internals_list;
+                while(aux != NULL){
+
+                    if((strcmp(aux->node->node_addr, src_node->node_addr) == 0) &&
+                       ((strcmp(aux->node->tcp_port, src_node->tcp_port)) == 0) &&
+                       (aux->node->node_fd != src_node->node_fd)){
+
+                        // This unknown node has duplicated information, remove it
+                        printf("Error in parse_tcp: Unknown neighbor sent ENTRY message with duplicated interface. Connection closed\n");                    
+                        FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                        close(src_node->node_fd);
+                        free_contact(&temp);
+                        slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                        slf_node->n_internals--;
+                        return -1;
+                    }
+                    aux = aux->next;
+                }
 
                 // if ENTRY came from my extern, put him in the interns list
 
@@ -1209,7 +1267,7 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                     slf_node->n_internals++;
                 }
                 
-                printf("\nSending %s %s %s\n\n", safe_str, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
+                printf("Sending %s\n\n", safe_str);
                 return_msg = send_safe(src_node->node_fd, slf_node->extern_node->node_addr, slf_node->extern_node->tcp_port);
                 
                 if (strcmp(return_msg, "1") == 0) {
@@ -1229,12 +1287,14 @@ int parse_tcp(struct personal_node *slf_node, char *msg, nodeinfo_t *src_node){
                         free(return_msg);
                         return_msg = NULL;
                         printf("Error accepting new internal: Failed to send SAFE message. Connection closed\n");
-                        slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
-                        close(src_node->node_fd);
                         FD_CLR(src_node->node_fd, &(slf_node->crr_scks));
+                        close(src_node->node_fd);                        
+                        slf_node->internals_list = removenode(slf_node->internals_list, src_node->node_fd);
+                        slf_node->n_internals--;
+                        
                     }
                     free_contact(&temp);
-                    return ++fail_flag;                        
+                    return -1;                        
                 }
             }                        
         }
@@ -1332,6 +1392,8 @@ char *parseNstore(char msg_bffr[], char **node_bffr){
     const char delim[2] = "\n";
     char *token = NULL;
     char *one_cmd; 
+    
+    
     if((one_cmd = (char*)calloc(MAX_MSG_LENGTH, sizeof(char))) == NULL){
         
         printf("Failed to allocate memory in parseNstore. Process terminated\n");
@@ -1347,7 +1409,7 @@ char *parseNstore(char msg_bffr[], char **node_bffr){
         if(((str_ptr = strchr(*node_bffr, '\n')) != NULL) && ((token=strtok(*node_bffr,delim)) != NULL)){  // if there's a final part of a message, store it
             
             msg_found = 1;
-            snprintf(one_cmd, MAX_MSG_LENGTH,"%s",token);
+            snprintf(one_cmd, MAX_MSG_LENGTH - 1,"%s",token);
             
             //strtok only replaces the next occurence (from left to right) of the \n
 
@@ -1379,7 +1441,7 @@ char *parseNstore(char msg_bffr[], char **node_bffr){
             // try to concatenate with the contents from the file descriptor
             // this guy shouldn't have the \n character
 
-            snprintf(one_cmd, strlen(*node_bffr),"%s",*node_bffr);
+            snprintf(one_cmd, MAX_NAME_LENGTH - 1,"%s",*node_bffr);            
             memset(*node_bffr, 0, MAX_MSG_LENGTH);
         }         
     
@@ -1427,15 +1489,34 @@ char *parseNstore(char msg_bffr[], char **node_bffr){
         else{
             
             // no message found
-            // store the remainder in the node's buffer and return NULL
-            strcat(one_cmd, msg_bffr); 
-            strcpy(*node_bffr, one_cmd);
+
+            // check if you still have space in the buffer
+            if((strlen(one_cmd) + strlen(msg_bffr)) < MAX_MSG_LENGTH -1){
+            
+                //if so, store the remainder in the node's buffer and return NULL
+                strcat(one_cmd, msg_bffr); 
+                strcpy(*node_bffr, one_cmd);
+            }
+            // else, consider this message too long to be processed, (200 bytes with content without a \n is strange)
+            free(one_cmd);        
+            
             return NULL;
             
         }
     }
+    else{
+
+        //In case msg_buffer has nothing to add to the incomplete node buffer
+
+        snprintf(*node_bffr, MAX_NAME_LENGTH - 1,"%s",one_cmd); 
+    } 
+    
+    
+
     if(msg_found == 1) return one_cmd;
+
     free(one_cmd);
+    
     return NULL;
                              
 }

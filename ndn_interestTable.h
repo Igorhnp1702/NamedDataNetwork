@@ -45,7 +45,7 @@ InterestEntry *add_interest(InterestEntry *head, nodeinfo_t *src_node, char *nam
 
 InterestEntry *RemoveSingleInterest(InterestEntry *head, nodeinfo_t *target_node, char *name2del, InterfaceState target_state, int retrieve_flag);
 
-InterestEntry *remove_interests(InterestEntry *table, char *name2del); // remove all interests from the interest table related to 'name2del'
+InterestEntry *remove_interests(InterestEntry *table, char *name2del, int retrieve_flag); // remove all interests from the interest table related to 'name2del'
 
 void free_interest(InterestEntry **interest_block); // free the memory allocated for the interest
 

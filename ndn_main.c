@@ -68,7 +68,7 @@ int main(int argc, char **argv){
     {
         if(check_cache_size(argv[1]) == 1){
 
-            printf("Cache size has to be a positive number");
+            printf("Cache size has to be a positive number\n");
             exit(1);
         }
         cache_threshold = atoi(argv[1]);
@@ -98,7 +98,7 @@ int main(int argc, char **argv){
     {
         if(check_cache_size(argv[1]) == 1){
 
-            printf("Cache size has to be a positive number");
+            printf("Cache size has to be a positive number\n");
             exit(1);
         }
         cache_threshold = atoi(argv[1]);
@@ -126,13 +126,18 @@ int main(int argc, char **argv){
             printf("The node server's UDP port will default to %s\n", DEFAULT_REGUDP);
             server_port = DEFAULT_REGUDP;
 
-        }else{ // if test fails
+        }else if(check_ports(argv[4]) == 0){ // if test fails
                                    
             server_port = argv[4];
 
             printf("The node server's IPv4 address will default to %s\n", DEFAULT_REGIP);
             server_addr = DEFAULT_REGIP;
 
+        }
+        else{
+
+            printf("Invalid 4th argument. Process terminated\n");
+            exit(1);
         }            
         
     } // if 4 arguments
@@ -142,7 +147,7 @@ int main(int argc, char **argv){
     
         if(check_cache_size(argv[1]) == 1){
 
-            printf("Cache size has to be a positive number");
+            printf("Cache size has to be a positive number\n");
             exit(1);
         }
         cache_threshold = atoi(argv[1]);
@@ -204,6 +209,7 @@ int main(int argc, char **argv){
     // Start the event loop
       
     int select_ctrl;
+    int parse_return = 0;
     int fd_itr = 0;              // an iterator to go through the FD set
     char buffer[MAX_MSG_LENGTH]; // buffer to receive msg and cmd
     
@@ -213,7 +219,7 @@ int main(int argc, char **argv){
     int new_fd;                  // a file descriptor to receive the "NEW" message and extract the id of the node
     int backup_fail = 0;
 
-    nodesLinkedlist_t *aux;
+    nodesLinkedlist_t *aux, *aux2del;
     
     nodeinfo_t *node_aux = NULL;
     node_aux = contact_init(node_aux);
@@ -321,10 +327,10 @@ int main(int argc, char **argv){
                 // read a message from a node
                 
                 else if(my_node->network_flag == 1){
-                    memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'                    
-                    
+                    memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'   
+                                                            
                     nread = read(fd_itr, buffer, MAX_MSG_LENGTH - 1);
-
+                     
                     if (nread == -1) {
                         printf("Error in read: %s\n", strerror(errno));
                         FD_CLR(fd_itr, &(my_node->crr_scks));
@@ -353,7 +359,7 @@ int main(int argc, char **argv){
 
                                 // If the backup node fails, pick an intern to be an anchor with you
                                                                     
-                                printf("Sending %s %s %s\n\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
+                                printf("Sending %s\n\n", entry_str);
 
                                 return_msg = send_entry(&(my_node->extern_node->node_fd), my_node->personal_addr, my_node->personal_tcp,
                                 my_node->backup_addr, my_node->backup_tcp); 
@@ -403,25 +409,9 @@ int main(int argc, char **argv){
                                     contact_copy(my_node->extern_node, aux->node);
                                     my_node->extern_node->node_fd = aux->node->node_fd;
 
-                                    //send him a safe message followed by an entry message
-                                    printf("Sending %s %s %s\n", safe_str, aux->node->node_addr, aux->node->tcp_port);
-
-                                    return_msg = send_safe(my_node->extern_node->node_fd, aux->node->node_addr, aux->node->tcp_port);
-                                    if(return_msg == NULL){
-                                        
-                                        printf("Failed to convert intern into extern. Connection closed.\n");
-                                        my_node->internals_list = removenode(my_node->internals_list, aux->node->node_fd);
-                                        my_node->n_internals--;
-                                        aux = aux->next; // head = head->next                                        
-                                        continue;
-                                    }
-                                    free(return_msg);
-                                    return_msg = NULL; 
+                                    //send ENTRY + SAFE
                                     
-                                    printf("\nMessage sent to [%s | %s]:\n", aux->node->node_addr, aux->node->tcp_port);
-                                    printf("%s %s %s\n\n", safe_str, aux->node->node_addr, aux->node->tcp_port);
-
-                                    printf("Sending %s %s %s\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
+                                    printf("Sending %s\n\n", entry_str);
 
                                     return_msg = send_entry(&(my_node->extern_node->node_fd), my_node->personal_addr, my_node->personal_tcp,
                                     my_node->backup_addr, my_node->backup_tcp);
@@ -438,6 +428,26 @@ int main(int argc, char **argv){
 
                                     printf("\nMessage sent to [%s | %s]:\n", aux->node->node_addr, aux->node->tcp_port);
                                     printf("%s %s %s\n\n", entry_str, my_node->personal_addr, my_node->personal_tcp);
+
+                                    
+                                    printf("Sending %s\n", safe_str);
+
+                                    return_msg = send_safe(my_node->extern_node->node_fd, aux->node->node_addr, aux->node->tcp_port);
+                                    if(return_msg == NULL){
+                                        
+                                        printf("Failed to convert intern into extern. Connection closed.\n");
+                                        aux2del = aux;
+                                        aux = aux->next; // head = head->next                            
+                                        my_node->internals_list = removenode(my_node->internals_list, aux2del->node->node_fd);
+                                        my_node->n_internals--;
+                                                    
+                                        continue;
+                                    }
+                                    free(return_msg);
+                                    return_msg = NULL; 
+                                    
+                                    printf("\nMessage sent to [%s | %s]:\n", aux->node->node_addr, aux->node->tcp_port);
+                                    printf("%s %s %s\n\n", safe_str, aux->node->node_addr, aux->node->tcp_port);                                    
                                     
                                     backup_fail = 0;
                                     printf("Waiting for response to conversion\n\n");
@@ -454,7 +464,7 @@ int main(int argc, char **argv){
                                 
                                     if(aux->node->node_fd != my_node->extern_node->node_fd){
 
-                                        printf("Sending %s %s %s\n", safe_str, my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
+                                        printf("Sending %s\n\n", safe_str);
 
                                         return_msg = send_safe(aux->node->node_fd, my_node->extern_node->node_addr, my_node->extern_node->tcp_port);
                                         if(return_msg == NULL){
@@ -503,7 +513,13 @@ int main(int argc, char **argv){
                             while(aux != NULL){
                             
                                 if(aux->node->node_fd == fd_itr){
-                                    printf("Internal node disconected: [%s | %s]\n", aux->node->node_addr, aux->node->tcp_port);
+                                    
+                                    if((strcmp(aux->node->node_addr, "") == 0) || (strcmp(aux->node->tcp_port, "") == 0)){
+                                        
+                                        printf("Unknown neighbor disconnected\n");
+                                    }
+                                    else printf("Internal node disconnected: [%s | %s]\n", aux->node->node_addr, aux->node->tcp_port);
+
                                     break;
                                 }
                                 aux = aux->next;
@@ -551,16 +567,19 @@ int main(int argc, char **argv){
                                     
                                     // the message came from an intern node
                                     while((message = parseNstore(buffer, &(aux->node->node_buff))) != NULL){
-
                                         memset(buffer, 0, MAX_MSG_LENGTH); //set the buffer to '\0'
-                                        if(parse_tcp(my_node, message, aux->node) == 1){
-                                            printf("Error in main: failed to parse a message\n");
-                                            
-                                        }
+                                        parse_return = parse_tcp(my_node, message, aux->node);
                                         if(message != NULL){
                                             free(message);
                                             message = NULL;
                                         }
+
+                                        if( parse_return == 1){
+                                            printf("Error in main: failed to parse a message\n");
+                                            
+                                        }
+                                        if( parse_return == -1) break;
+                                                                                                                                                                      
                                     }
                                     break;
                                 } 
